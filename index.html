@@ -1,0 +1,3761 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestor de Carteira - Dividendos & Aposentadoria</title>
+<style>
+:root {
+    --bg: #0f1923; --bg2: #162736; --bg3: #1a3040; --border: #1e3a4f;
+    --green: #00d4aa; --green2: #00ff88; --gold: #ffd700; --orange: #ffa726;
+    --red: #ff5252; --text: #e0e0e0; --muted: #888;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Segoe UI',Tahoma,sans-serif; background:var(--bg); color:var(--text); }
+.app { display:grid; grid-template-columns:220px 1fr; min-height:100vh; }
+
+/* SIDEBAR */
+.sidebar { background:#0a1219; border-right:1px solid var(--border); padding:15px 0; position:sticky; top:0; height:100vh; overflow-y:auto; }
+.sidebar h2 { color:var(--green); font-size:1em; padding:0 15px 15px; border-bottom:1px solid var(--border); }
+.nav-item { padding:12px 20px; cursor:pointer; font-size:0.9em; border-left:3px solid transparent; transition:all .2s; display:flex; align-items:center; gap:10px; }
+.nav-item:hover { background:var(--bg2); }
+.nav-item.active { background:var(--bg3); border-left-color:var(--green); color:var(--green); font-weight:600; }
+.nav-icon { font-size:1.1em; width:22px; text-align:center; }
+
+/* MAIN */
+.main { padding:25px; overflow-y:auto; }
+.page { display:none; }
+.page.active { display:block; }
+.page-title { color:var(--green); font-size:1.5em; margin-bottom:20px; display:flex; align-items:center; gap:10px; }
+
+/* CARDS */
+.stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:15px; margin-bottom:25px; }
+.stat-card { background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:18px; }
+.stat-card .value { font-size:1.8em; font-weight:700; color:var(--green); }
+.stat-card .value.gold { color:var(--gold); }
+.stat-card .value.red { color:var(--red); }
+.stat-card .label { color:var(--muted); font-size:.8em; margin-top:4px; }
+
+/* TABLES */
+.table-wrap { overflow-x:auto; margin:15px 0; border-radius:8px; border:1px solid var(--border); }
+table { width:100%; border-collapse:collapse; font-size:.85em; }
+th { background:#1e3a4f; color:var(--green); padding:10px 12px; text-align:right; font-weight:600; white-space:nowrap; position:sticky; top:0; z-index:1; cursor:pointer; user-select:none; }
+th:hover { background:#264a5f; }
+th .sort-arrow { font-size:.7em; margin-left:4px; opacity:.5; }
+th.sorted .sort-arrow { opacity:1; color:var(--gold); }
+th:first-child, th:nth-child(2), th:nth-child(3) { text-align:left; }
+td { padding:9px 12px; border-bottom:1px solid #1a2a3a; text-align:right; white-space:nowrap; }
+td:first-child, td:nth-child(2), td:nth-child(3) { text-align:left; }
+tr:hover { background:rgba(0,212,170,.05); }
+.positive { color:var(--green2); }
+.negative { color:var(--red); }
+
+/* FORMS */
+.form-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin:15px 0; }
+.form-group { display:flex; flex-direction:column; gap:4px; }
+.form-group label { font-size:.8em; color:var(--muted); }
+.form-group input, .form-group select { background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px 12px; border-radius:6px; font-size:.9em; }
+.form-group input:focus, .form-group select:focus { outline:none; border-color:var(--green); }
+
+.btn { padding:10px 20px; border:none; border-radius:6px; cursor:pointer; font-size:.9em; font-weight:600; transition:all .2s; }
+.btn-primary { background:var(--green); color:var(--bg); }
+.btn-primary:hover { background:var(--green2); }
+.btn-danger { background:var(--red); color:#fff; }
+.btn-danger:hover { opacity:.8; }
+.btn-gold { background:var(--gold); color:var(--bg); }
+.btn-sm { padding:5px 12px; font-size:.8em; }
+.btn-group { display:flex; gap:8px; margin:15px 0; flex-wrap:wrap; }
+
+/* BADGES */
+.badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:.75em; font-weight:600; }
+.badge-green { background:#0a3a2a; color:var(--green2); }
+.badge-gold { background:#3a3a0a; color:var(--gold); }
+.badge-red { background:#3a0a0a; color:var(--red); }
+.badge-blue { background:#0a1a3a; color:#4fc3f7; }
+.badge-purple { background:#2a0a3a; color:#ab47bc; }
+
+/* CHARTS (CSS) */
+.bar-chart { margin:15px 0; }
+.bar-row { display:flex; align-items:center; margin:6px 0; gap:10px; }
+.bar-label { width:80px; text-align:right; font-size:.8em; color:var(--muted); flex-shrink:0; }
+.bar-track { flex:1; background:#1a2a3a; border-radius:4px; height:24px; overflow:hidden; position:relative; }
+.bar-fill { height:100%; border-radius:4px; display:flex; align-items:center; padding:0 8px; font-size:.75em; font-weight:600; color:var(--bg); transition:width .5s; }
+.bar-value { width:90px; text-align:right; font-size:.85em; font-weight:600; flex-shrink:0; }
+
+/* DONUT (CSS) */
+.donut-container { display:flex; gap:30px; flex-wrap:wrap; align-items:center; margin:20px 0; }
+.donut-legend { display:flex; flex-direction:column; gap:6px; }
+.legend-item { display:flex; align-items:center; gap:8px; font-size:.85em; }
+.legend-dot { width:12px; height:12px; border-radius:3px; flex-shrink:0; }
+
+/* PROGRESS */
+.progress-wrap { margin:10px 0; }
+.progress-label { display:flex; justify-content:space-between; font-size:.8em; color:var(--muted); margin-bottom:4px; }
+.progress-bar { background:#1a2a3a; border-radius:10px; height:20px; overflow:hidden; }
+.progress-fill { height:100%; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:.7em; font-weight:700; color:var(--bg); }
+
+/* MODAL */
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:100; align-items:center; justify-content:center; }
+.modal-overlay.show { display:flex; }
+.modal { background:var(--bg2); border:1px solid var(--border); border-radius:12px; padding:25px; width:90%; max-width:550px; max-height:80vh; overflow-y:auto; }
+.modal h3 { color:var(--green); margin-bottom:15px; }
+
+/* TABS */
+.tab-bar { display:flex; gap:5px; margin-bottom:20px; border-bottom:2px solid var(--border); }
+.tab-btn { padding:8px 16px; background:transparent; border:none; color:var(--muted); cursor:pointer; font-size:.9em; border-bottom:2px solid transparent; margin-bottom:-2px; }
+.tab-btn.active { color:var(--green); border-bottom-color:var(--green); font-weight:600; }
+
+/* TOOLTIP */
+.info-tip { display:inline-block; width:16px; height:16px; background:var(--border); color:var(--muted); border-radius:50%; text-align:center; font-size:.7em; line-height:16px; cursor:help; margin-left:5px; }
+
+/* OPORTUNIDADES */
+.oportunidade-preco { background:rgba(0,212,170,.12) !important; border-left:3px solid var(--green2) !important; }
+.oportunidade-dy { background:rgba(255,215,0,.1) !important; border-left:3px solid var(--gold) !important; }
+.oportunidade-dupla { background:rgba(0,255,136,.15) !important; border-left:3px solid #00ff88 !important; }
+.oport-badge { display:inline-block; padding:1px 6px; border-radius:8px; font-size:.65em; font-weight:700; margin-left:4px; }
+.oport-badge-preco { background:#0a4a2a; color:var(--green2); }
+.oport-badge-dy { background:#3a3a0a; color:var(--gold); }
+.oport-badge-dupla { background:#0a5a1a; color:#00ff88; }
+
+/* CANVAS CHARTS */
+canvas { display:block; }
+
+/* MOBILE HEADER */
+.mobile-header {
+    display:none;
+    position:sticky; top:0; z-index:50;
+    background:#0a1219; border-bottom:1px solid var(--border);
+    padding:10px 15px;
+    align-items:center; justify-content:space-between;
+}
+.mobile-header h2 { color:var(--green); font-size:1em; margin:0; }
+.hamburger {
+    background:none; border:none; color:var(--green); font-size:1.5em;
+    cursor:pointer; padding:4px 8px; line-height:1;
+}
+.sidebar-overlay {
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:90;
+}
+.sidebar-overlay.show { display:block; }
+
+/* RESPONSIVE */
+@media(max-width:768px) {
+    .app { display:flex; flex-direction:column; min-height:100vh; }
+    .mobile-header { display:flex; }
+    .sidebar {
+        display:none; position:fixed; top:0; left:0; bottom:0; width:260px;
+        z-index:100; overflow-y:auto;
+    }
+    .sidebar.open { display:block; }
+    .main { padding:15px 10px; flex:1; overflow-x:hidden; }
+    .page-title { font-size:1.2em; flex-wrap:wrap; gap:8px; }
+    .stats-grid { grid-template-columns:1fr 1fr; gap:8px; }
+    .stat-card { padding:12px; }
+    .stat-card .value { font-size:1.3em; }
+
+    /* Dashboard 2-col grid -> 1 col */
+    .dash-two-col {
+        display:block !important;
+    }
+    .dash-two-col > div {
+        margin-bottom:15px;
+    }
+
+    /* Tabelas scroll horizontal */
+    .table-wrap { -webkit-overflow-scrolling:touch; }
+    table { font-size:.75em; }
+    th, td { padding:6px 8px; }
+
+    /* Formularios */
+    .form-grid { grid-template-columns:1fr !important; gap:8px; }
+
+    /* Modais */
+    .modal { width:95%; max-width:95%; padding:15px; margin:10px; }
+
+    /* Botoes */
+    .btn-group { flex-wrap:wrap; }
+    .btn-group .btn { flex:1; min-width:120px; text-align:center; }
+
+    /* Tab bar scroll */
+    .tab-bar { overflow-x:auto; -webkit-overflow-scrolling:touch; flex-wrap:nowrap; }
+    .tab-btn { flex-shrink:0; font-size:.8em; padding:6px 12px; }
+
+    /* Canvas charts */
+    canvas { height:200px !important; }
+
+    /* Bar charts */
+    .bar-row { gap:6px; }
+    .bar-label { width:55px; font-size:.7em; }
+    .bar-value { width:70px; font-size:.75em; }
+
+    /* Donut */
+    .donut-container { flex-direction:column; align-items:flex-start; }
+
+    /* Progress */
+    .progress-fill { font-size:.6em; }
+}
+
+/* CALENDAR DIVIDENDOS */
+.calendar-timeline { display:flex; flex-direction:column; gap:10px; margin:10px 0 20px; }
+.calendar-item { display:flex; align-items:center; gap:15px; padding:12px 16px; background:var(--bg2); border:1px solid var(--border); border-radius:8px; transition:all .2s; }
+.calendar-item.urgent { border-left:4px solid var(--red); background:rgba(255,82,82,.08); }
+.calendar-item.soon { border-left:4px solid var(--orange); background:rgba(255,167,38,.06); }
+.calendar-item.normal { border-left:4px solid var(--green); }
+.calendar-date { min-width:70px; text-align:center; }
+.calendar-date .day { font-size:1.4em; font-weight:700; color:var(--green); line-height:1; }
+.calendar-date .month { font-size:.7em; color:var(--muted); text-transform:uppercase; }
+.calendar-info { flex:1; }
+.calendar-info .ticker { font-weight:700; color:var(--green); font-size:.95em; }
+.calendar-info .details { font-size:.78em; color:var(--muted); margin-top:2px; }
+.calendar-value { text-align:right; font-weight:700; color:var(--gold); font-size:.95em; min-width:90px; }
+.calendar-alert { padding:10px 14px; border-radius:8px; margin-bottom:8px; font-size:.85em; font-weight:600; display:flex; align-items:center; gap:8px; }
+.calendar-alert.alert-red { background:rgba(255,82,82,.15); color:var(--red); border:1px solid rgba(255,82,82,.3); }
+.calendar-alert.alert-orange { background:rgba(255,167,38,.12); color:var(--orange); border:1px solid rgba(255,167,38,.25); }
+
+/* DIVIDENDOS - Section titles */
+.div-section-title { color:var(--green); margin:20px 0 10px; font-size:1em; font-weight:700; display:flex; align-items:center; gap:8px; }
+.div-section-icon { font-size:1.1em; }
+
+/* Calendar summary */
+.calendar-summary { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+.calendar-summary-card { flex:1; min-width:180px; padding:12px 16px; background:linear-gradient(135deg, rgba(0,212,170,.08), rgba(0,212,170,.02)); border:1px solid rgba(0,212,170,.2); border-radius:10px; }
+.calendar-summary-card .cs-value { font-size:1.3em; font-weight:700; color:var(--gold); }
+.calendar-summary-card .cs-label { font-size:.75em; color:var(--muted); margin-top:2px; }
+.calendar-empty { padding:20px; text-align:center; color:var(--muted); font-size:.85em; background:var(--bg2); border:1px dashed var(--border); border-radius:8px; }
+
+/* History filter tabs */
+.div-filter-tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
+.div-filter-tab { padding:5px 14px; border-radius:16px; border:1px solid var(--border); background:var(--bg2); color:var(--muted); font-size:.8em; cursor:pointer; transition:all .2s; }
+.div-filter-tab:hover { border-color:var(--green); color:var(--green); }
+.div-filter-tab.active { background:var(--green); color:var(--bg); border-color:var(--green); font-weight:600; }
+
+/* Calendar month group */
+.calendar-month-header { font-size:.8em; font-weight:700; color:var(--green2); padding:8px 0 4px; margin-top:8px; border-bottom:1px solid var(--border); text-transform:uppercase; letter-spacing:.5px; }
+
+/* IMPORT API */
+.import-api-progress { padding:12px; background:var(--bg); border:1px solid var(--border); border-radius:8px; margin:10px 0; font-size:.85em; }
+.import-api-progress .status { color:var(--green); font-weight:600; }
+.import-api-progress .bar { height:6px; background:#1a2a3a; border-radius:3px; margin-top:8px; overflow:hidden; }
+.import-api-progress .bar-inner { height:100%; background:var(--green); border-radius:3px; transition:width .3s; }
+.import-api-checkbox { cursor:pointer; width:16px; height:16px; accent-color:var(--green); }
+.import-api-summary { padding:10px; background:var(--bg); border:1px solid var(--border); border-radius:8px; font-size:.85em; margin:10px 0; }
+
+/* GOOGLE SYNC */
+.sync-section { border-top:1px solid var(--border); margin-top:10px; padding:10px 15px; }
+.sync-section .sync-title { font-size:.7em; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; }
+.sync-status { display:flex; align-items:center; gap:6px; font-size:.75em; margin-bottom:8px; }
+.sync-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.sync-dot.connected { background:#00ff88; box-shadow:0 0 6px #00ff88; }
+.sync-dot.disconnected { background:#ff5252; }
+.sync-btn { display:flex; align-items:center; gap:8px; width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:6px; background:var(--bg2); color:var(--text); cursor:pointer; font-size:.8em; transition:all .2s; }
+.sync-btn:hover { background:var(--bg3); border-color:var(--green); }
+.sync-btn.btn-google { border-color:#4285f4; }
+.sync-btn.btn-google:hover { background:rgba(66,133,244,.15); }
+.sync-btn.btn-sync { border-color:var(--green); }
+.sync-btn.btn-sync:hover { background:rgba(0,212,170,.1); }
+.sync-btn.btn-logout { border-color:var(--red); font-size:.7em; opacity:.7; }
+.sync-btn.btn-logout:hover { opacity:1; background:rgba(255,82,82,.1); }
+.sync-last { font-size:.65em; color:var(--muted); margin-top:6px; }
+.sync-spinner { display:inline-block; width:14px; height:14px; border:2px solid var(--border); border-top-color:var(--green); border-radius:50%; animation:spin .6s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* CRYPTO OVERLAY */
+.app-locked .app { display:none !important; }
+.crypto-overlay {
+    position:fixed; inset:0; z-index:999;
+    background:linear-gradient(135deg, #0a1219 0%, #0f1923 50%, #162736 100%);
+    display:flex; align-items:center; justify-content:center;
+    padding:20px;
+}
+.crypto-box {
+    background:var(--bg2); border:1px solid var(--border); border-radius:16px;
+    padding:40px 35px; width:100%; max-width:400px;
+    box-shadow:0 8px 32px rgba(0,0,0,.5);
+}
+.crypto-box h2 { color:var(--green); text-align:center; margin-bottom:8px; font-size:1.4em; }
+.crypto-box .crypto-subtitle { color:var(--muted); text-align:center; font-size:.85em; margin-bottom:25px; }
+.crypto-box .crypto-icon { text-align:center; font-size:2.5em; margin-bottom:15px; }
+.crypto-box .form-group { margin-bottom:16px; }
+.crypto-box .form-group label { font-size:.85em; color:var(--muted); margin-bottom:4px; display:block; }
+.crypto-box .form-group input {
+    width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text);
+    padding:12px 14px; border-radius:8px; font-size:1em;
+}
+.crypto-box .form-group input:focus { outline:none; border-color:var(--green); box-shadow:0 0 0 2px rgba(0,212,170,.2); }
+.crypto-box .btn { width:100%; padding:12px; font-size:1em; margin-top:8px; }
+.crypto-box .crypto-error {
+    color:var(--red); font-size:.85em; text-align:center; margin-top:12px;
+    min-height:20px; transition:opacity .3s;
+}
+.crypto-box .crypto-link { color:var(--muted); font-size:.8em; text-align:center; margin-top:15px; cursor:pointer; }
+.crypto-box .crypto-link:hover { color:var(--green); text-decoration:underline; }
+.crypto-box .crypto-strength { height:4px; border-radius:2px; margin-top:6px; transition:all .3s; }
+.crypto-box .crypto-strength-text { font-size:.75em; margin-top:4px; }
+.crypto-form { display:none; }
+.crypto-form.active { display:block; }
+
+/* GOOGLE AUTH GATE */
+.auth-overlay {
+    position:fixed; inset:0; z-index:1000;
+    background:linear-gradient(135deg, #0a1219 0%, #0f1923 50%, #162736 100%);
+    display:flex; align-items:center; justify-content:center;
+    padding:20px;
+}
+.auth-box {
+    background:var(--bg2); border:1px solid var(--border); border-radius:16px;
+    padding:40px 35px; width:100%; max-width:400px; text-align:center;
+    box-shadow:0 8px 32px rgba(0,0,0,.5);
+}
+.auth-box h2 { color:var(--green); margin-bottom:8px; font-size:1.4em; }
+.auth-box .auth-subtitle { color:var(--muted); font-size:.85em; margin-bottom:25px; }
+.auth-box .auth-icon { font-size:3em; margin-bottom:15px; }
+.auth-box .btn-google-auth {
+    display:inline-flex; align-items:center; gap:10px; padding:12px 24px;
+    background:#fff; color:#333; border:1px solid #ddd; border-radius:8px;
+    font-size:1em; font-weight:600; cursor:pointer; transition:all .2s;
+}
+.auth-box .btn-google-auth:hover { background:#f5f5f5; box-shadow:0 2px 8px rgba(0,0,0,.15); }
+.auth-box .auth-error { color:var(--red); font-size:.85em; margin-top:15px; min-height:20px; }
+.auth-box .auth-user { display:flex; align-items:center; gap:10px; justify-content:center; margin:15px 0; padding:10px; background:var(--bg); border-radius:8px; }
+.auth-box .auth-user img { width:32px; height:32px; border-radius:50%; }
+.auth-box .auth-user-info { text-align:left; }
+.auth-box .auth-user-name { font-size:.9em; font-weight:600; }
+.auth-box .auth-user-email { font-size:.75em; color:var(--muted); }
+.crypto-reset-options { margin-top:15px; padding:15px; background:var(--bg); border-radius:8px; border:1px solid var(--border); }
+.crypto-reset-options p { font-size:.85em; color:var(--muted); margin-bottom:10px; }
+.crypto-reset-options .btn { margin-top:8px; font-size:.85em; }
+</style>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body class="app-locked">
+
+<!-- GOOGLE AUTH GATE -->
+<div class="auth-overlay" id="auth-overlay" style="display:none;">
+<div class="auth-box">
+    <div class="auth-icon">🛡️</div>
+    <h2>Gestor de Carteira</h2>
+    <p class="auth-subtitle">Acesso restrito. Faca login com sua conta Google autorizada.</p>
+    <button class="btn-google-auth" id="btn-auth-google" onclick="authWithGoogle()">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#4285F4" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#34A853" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#EA4335" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+        Entrar com Google
+    </button>
+    <div class="auth-error" id="auth-error"></div>
+</div>
+</div>
+
+<!-- CRYPTO OVERLAY -->
+<div class="crypto-overlay" id="crypto-overlay" style="display:none;">
+<div class="crypto-box">
+
+    <!-- LOGIN FORM -->
+    <div class="crypto-form active" id="crypto-login">
+        <div class="crypto-icon">🔒</div>
+        <h2>Gestor de Carteira</h2>
+        <p class="crypto-subtitle">Digite sua senha para acessar</p>
+        <div class="form-group">
+            <label>Senha</label>
+            <input type="password" id="crypto-login-pass" placeholder="Digite sua senha" onkeydown="if(event.key==='Enter')cryptoUnlock()">
+        </div>
+        <button class="btn btn-primary" onclick="cryptoUnlock()">Desbloquear</button>
+        <div class="crypto-error" id="crypto-login-error"></div>
+        <div class="crypto-link" onclick="showCryptoResetHelp()">Esqueceu a senha?</div>
+        <div id="crypto-reset-help" style="display:none;">
+            <div class="crypto-reset-options">
+                <p><strong>Sem a senha, nao e possivel recuperar os dados criptografados.</strong></p>
+                <p>Voce pode restaurar um backup JSON salvo anteriormente, ou resetar completamente.</p>
+                <button class="btn btn-gold btn-sm" onclick="cryptoRestoreFromBackup()" style="width:100%;">Restaurar Backup JSON</button>
+                <input type="file" id="crypto-restore-input" accept=".json" style="display:none" onchange="cryptoProcessRestore(this)">
+                <button class="btn btn-danger btn-sm" onclick="cryptoFullReset()" style="width:100%;">Apagar Tudo e Comecar do Zero</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SETUP FORM -->
+    <div class="crypto-form" id="crypto-setup">
+        <div class="crypto-icon">🔐</div>
+        <h2>Definir Senha</h2>
+        <p class="crypto-subtitle" id="crypto-setup-subtitle">Proteja seus dados com uma senha</p>
+        <div class="form-group">
+            <label>Nova Senha</label>
+            <input type="password" id="crypto-setup-pass" placeholder="Minimo 4 caracteres" oninput="checkPasswordStrength(this.value)">
+            <div class="crypto-strength" id="crypto-strength-bar"></div>
+            <div class="crypto-strength-text" id="crypto-strength-text"></div>
+        </div>
+        <div class="form-group">
+            <label>Confirmar Senha</label>
+            <input type="password" id="crypto-setup-confirm" placeholder="Repita a senha" onkeydown="if(event.key==='Enter')cryptoSetup()">
+        </div>
+        <button class="btn btn-primary" onclick="cryptoSetup()">Definir Senha e Criptografar</button>
+        <div class="crypto-error" id="crypto-setup-error"></div>
+    </div>
+
+    <!-- CHANGE PASSWORD FORM -->
+    <div class="crypto-form" id="crypto-change">
+        <div class="crypto-icon">🔑</div>
+        <h2>Alterar Senha</h2>
+        <p class="crypto-subtitle">Defina uma nova senha para seus dados</p>
+        <div class="form-group">
+            <label>Senha Atual</label>
+            <input type="password" id="crypto-change-old" placeholder="Senha atual">
+        </div>
+        <div class="form-group">
+            <label>Nova Senha</label>
+            <input type="password" id="crypto-change-new" placeholder="Nova senha" oninput="checkPasswordStrength(this.value,'change')">
+            <div class="crypto-strength" id="crypto-strength-bar-change"></div>
+            <div class="crypto-strength-text" id="crypto-strength-text-change"></div>
+        </div>
+        <div class="form-group">
+            <label>Confirmar Nova Senha</label>
+            <input type="password" id="crypto-change-confirm" placeholder="Repita a nova senha" onkeydown="if(event.key==='Enter')cryptoChangePassword()">
+        </div>
+        <button class="btn btn-primary" onclick="cryptoChangePassword()">Alterar Senha</button>
+        <button class="btn btn-danger" onclick="closeCryptoChange()" style="margin-top:6px;">Cancelar</button>
+        <div class="crypto-error" id="crypto-change-error"></div>
+    </div>
+
+</div>
+</div>
+
+<div class="app">
+<!-- MOBILE HEADER -->
+<div class="mobile-header">
+    <h2>Gestor de Carteira</h2>
+    <button class="hamburger" onclick="toggleMobileMenu()">&#9776;</button>
+</div>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleMobileMenu()"></div>
+
+<!-- SIDEBAR -->
+<nav class="sidebar" id="sidebar-nav">
+    <h2 style="display:flex;align-items:center;gap:8px;">Gestor de Carteira</h2>
+    <div class="nav-item active" onclick="showPage('dashboard')"><span class="nav-icon">D</span> Dashboard</div>
+    <div class="nav-item" onclick="showPage('carteira')"><span class="nav-icon">C</span> Carteira</div>
+    <div class="nav-item" onclick="showPage('dividendos')"><span class="nav-icon">$</span> Dividendos</div>
+    <div class="nav-item" onclick="showPage('rebalancear')"><span class="nav-icon">R</span> Rebalancear</div>
+    <div class="nav-item" onclick="showPage('simulador')"><span class="nav-icon">S</span> Simulador</div>
+    <div class="nav-item" onclick="showPage('adicionar')"><span class="nav-icon">+</span> Adicionar Ativo</div>
+    <div class="nav-item" onclick="showPage('historico')"><span class="nav-icon">H</span> Historico</div>
+    <div class="nav-item" onclick="showPage('evolucao')"><span class="nav-icon">📈</span> Evolucao</div>
+    <div class="nav-item" onclick="exportData()"><span class="nav-icon">E</span> Exportar CSV</div>
+    <div class="nav-item" onclick="exportBackupJSON()"><span class="nav-icon">💾</span> Backup (JSON)</div>
+    <div class="nav-item" onclick="document.getElementById('restore-json-input').click()"><span class="nav-icon">📂</span> Restaurar Backup</div>
+    <input type="file" id="restore-json-input" accept=".json" style="display:none" onchange="restoreBackupJSON(this)">
+    <div class="nav-item" onclick="updateCotacoes()"><span class="nav-icon">↻</span> Atualizar Cotacoes</div>
+    <div class="nav-item" onclick="showChangePassword()"><span class="nav-icon">🔒</span> Alterar Senha</div>
+    <div class="nav-item" onclick="resetToDefault()"><span class="nav-icon">⟲</span> Resetar Dados</div>
+
+    <!-- GOOGLE SYNC SECTION -->
+    <div class="sync-section" id="sync-section">
+        <div class="sync-title">Sincronizacao na Nuvem</div>
+        <div class="sync-status" id="sync-status">
+            <span class="sync-dot disconnected" id="sync-dot"></span>
+            <span id="sync-status-text">Desconectado</span>
+        </div>
+        <div id="sync-buttons">
+            <button class="sync-btn btn-google" id="btn-google-login" onclick="loginGoogle()">
+                <span style="font-size:1.1em;">G</span> Conectar Google
+            </button>
+        </div>
+        <div id="sync-last-info" class="sync-last"></div>
+    </div>
+
+    <div id="last-update" style="padding:15px;font-size:.7em;color:var(--muted);border-top:1px solid var(--border);margin-top:10px;"></div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<main class="main">
+
+<!-- ===== DASHBOARD ===== -->
+<div id="dashboard" class="page active">
+    <div class="page-title">Dashboard</div>
+    <div id="dash-stats" class="stats-grid"></div>
+    <div class="dash-two-col" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div>
+            <h3 style="color:var(--green);margin-bottom:10px;">Alocacao por Tipo</h3>
+            <div id="dash-alloc-chart"></div>
+        </div>
+        <div>
+            <h3 style="color:var(--green);margin-bottom:10px;">Top 5 por Rentabilidade</h3>
+            <div id="dash-top5"></div>
+        </div>
+    </div>
+    <h3 style="color:var(--green);margin:25px 0 10px;">Progresso para Aposentadoria</h3>
+    <div id="dash-progress"></div>
+    <h3 style="color:var(--green);margin:25px 0 10px;">Oportunidades de Aporte</h3>
+    <div id="dash-oportunidades"></div>
+    <h3 style="color:var(--green);margin:25px 0 10px;">Peso por Ativo</h3>
+    <div id="dash-weight-chart"></div>
+</div>
+
+<!-- ===== CARTEIRA ===== -->
+<div id="carteira" class="page">
+    <div class="page-title">Carteira Completa</div>
+    <div class="tab-bar">
+        <button class="tab-btn active" onclick="filterCarteira('all',this)">Todos</button>
+        <button class="tab-btn" onclick="filterCarteira('Dividendos',this)">Acoes</button>
+        <button class="tab-btn" onclick="filterCarteira('FIIs',this)">FIIs</button>
+        <button class="tab-btn" onclick="filterCarteira('Valor',this)">Renda Fixa</button>
+        <button class="tab-btn" onclick="filterCarteira('Cripto',this)">Cripto</button>
+        <button class="tab-btn" onclick="filterCarteira('Caixa',this)">Caixa</button>
+    </div>
+    <div id="carteira-table" class="table-wrap"></div>
+</div>
+
+<!-- ===== DIVIDENDOS ===== -->
+<div id="dividendos" class="page">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
+        <div class="page-title" style="margin:0">Dividendos & Proventos</div>
+        <div class="btn-group" style="margin:0">
+            <button class="btn btn-primary btn-sm" onclick="openAddProvento()">+ Registrar Provento</button>
+            <button class="btn btn-gold btn-sm" onclick="openImportProventos()">Importar Excel/CSV</button>
+            <button class="btn btn-gold btn-sm" onclick="openImportProventosAPI()">Importar via API</button>
+        </div>
+    </div>
+
+    <h3 class="div-section-title"><span class="div-section-icon">&#x1F4B0;</span> Recebido</h3>
+    <div id="div-stats-recebido" class="stats-grid"></div>
+
+    <h3 class="div-section-title"><span class="div-section-icon">&#x1F4C8;</span> Estimativas & Projecoes</h3>
+    <div id="div-stats-estimado" class="stats-grid"></div>
+
+    <div id="div-calendar-section">
+        <h3 class="div-section-title"><span class="div-section-icon">&#x1F4C5;</span> Proximos Proventos</h3>
+        <div id="div-calendar-summary"></div>
+        <div id="div-calendar-alerts"></div>
+        <div id="div-calendar-timeline"></div>
+    </div>
+
+    <h3 class="div-section-title"><span class="div-section-icon">&#x1F4CA;</span> Evolucao Anual de Dividendos</h3>
+    <div id="div-yearly-chart"></div>
+    <h3 class="div-section-title"><span class="div-section-icon">&#x1F4C9;</span> Dividendos Mensais (Ultimos 24 meses)</h3>
+    <div id="div-monthly-chart"></div>
+    <h3 class="div-section-title"><span class="div-section-icon">&#x1F3AF;</span> Total Recebido por Ativo</h3>
+    <div id="div-ticker-chart"></div>
+    <h3 class="div-section-title"><span class="div-section-icon">&#x1F52E;</span> Estimativa Anual por Ativo</h3>
+    <div id="div-chart"></div>
+    <h3 class="div-section-title"><span class="div-section-icon">&#x1F4CB;</span> Historico de Proventos</h3>
+    <div id="div-history-filter"></div>
+    <div id="div-history" class="table-wrap"></div>
+</div>
+
+<!-- ===== REBALANCEAR ===== -->
+<div id="rebalancear" class="page">
+    <div class="page-title">Rebalanceamento</div>
+    <div class="form-grid" style="max-width:300px;">
+        <div class="form-group">
+            <label>Valor do Aporte (R$)</label>
+            <input type="number" id="rebal-amount" value="1500" onchange="calcRebalance()">
+        </div>
+    </div>
+    <p style="font-size:.85em;color:var(--muted);margin:10px 0 8px;">Selecione os ativos em que deseja aportar. O valor sera distribuido proporcionalmente pelo peso-alvo dos selecionados.</p>
+    <div class="btn-group" style="margin-bottom:10px;">
+        <button class="btn btn-sm btn-primary" onclick="rebalSelectAll()">Selecionar Todos</button>
+        <button class="btn btn-sm btn-danger" onclick="rebalSelectNone()">Limpar Selecao</button>
+    </div>
+    <div id="rebal-table" class="table-wrap"></div>
+</div>
+
+<!-- ===== SIMULADOR ===== -->
+<div id="simulador" class="page">
+    <div class="page-title">Simulador de Aposentadoria</div>
+    <div class="form-grid">
+        <div class="form-group"><label>Patrimonio Atual (R$)</label><input type="number" id="sim-pat" value="225600"></div>
+        <div class="form-group"><label>Aporte Mensal (R$)</label><input type="number" id="sim-aporte" value="1500"></div>
+        <div class="form-group"><label>Aumento Anual do Aporte (%)</label><input type="number" id="sim-aum" value="10"></div>
+        <div class="form-group"><label>Dividend Yield Medio (%)</label><input type="number" id="sim-dy" value="8" step="0.5"></div>
+        <div class="form-group"><label>Valorizacao Real Anual (%)</label><input type="number" id="sim-val" value="4" step="0.5"></div>
+        <div class="form-group"><label>Meta Renda Mensal (R$)</label><input type="number" id="sim-meta" value="20000"></div>
+        <div class="form-group"><label>Injecao Extra (Marc. Mercado) (R$)</label><input type="number" id="sim-inj" value="100000"></div>
+        <div class="form-group"><label>Ano da Injecao</label><input type="number" id="sim-inj-ano" value="2029"></div>
+    </div>
+    <div class="btn-group"><button class="btn btn-primary" onclick="runSimulation()">Simular</button></div>
+    <div id="sim-result"></div>
+</div>
+
+<!-- ===== ADICIONAR ATIVO ===== -->
+<div id="adicionar" class="page">
+    <div class="page-title">Adicionar / Editar Ativo</div>
+    <div class="form-grid">
+        <div class="form-group"><label>Ticker</label><input type="text" id="add-ticker" placeholder="Ex: BBAS3"></div>
+        <div class="form-group"><label>Tipo</label>
+            <select id="add-tipo">
+                <option value="Dividendos">Acao - Dividendos</option>
+                <option value="FIIs">FII</option>
+                <option value="Valor">Renda Fixa / ETF</option>
+                <option value="Cripto">Cripto</option>
+                <option value="Caixa">Caixa / Renda Fixa</option>
+            </select>
+        </div>
+        <div class="form-group"><label>Quantidade</label><input type="number" id="add-qtd" step="any"></div>
+        <div class="form-group"><label>Preco Medio (R$)</label><input type="number" id="add-pm" step="0.01"></div>
+        <div class="form-group"><label>Preco Atual (R$)</label><input type="number" id="add-preco" step="0.01"></div>
+        <div class="form-group"><label>Dividend Yield Anual (%)</label><input type="number" id="add-dy" step="0.01"></div>
+        <div class="form-group"><label>Peso Ideal na Carteira (%)</label><input type="number" id="add-peso-alvo" step="0.5"></div>
+        <div class="form-group"><label>Stop Gain (R$)</label><input type="number" id="add-stop" step="0.01"></div>
+    </div>
+    <div class="btn-group">
+        <button class="btn btn-primary" onclick="addAtivo()">Adicionar Ativo</button>
+        <button class="btn btn-danger" onclick="clearForm()">Limpar</button>
+    </div>
+    <p id="add-msg" style="margin-top:10px;font-size:.9em;"></p>
+</div>
+
+<!-- ===== HISTORICO ===== -->
+<div id="historico" class="page">
+    <div class="page-title">Historico de Operacoes</div>
+    <div id="hist-table" class="table-wrap"></div>
+    <div class="btn-group">
+        <button class="btn btn-danger btn-sm" onclick="if(confirm('Limpar todo o historico?')){state.historico=[];saveState();renderHistorico();}">Limpar Historico</button>
+    </div>
+</div>
+
+<!-- ===== EVOLUCAO ===== -->
+<div id="evolucao" class="page">
+    <div class="page-title" style="justify-content:space-between;">
+        <span>Evolucao do Patrimonio</span>
+        <button class="btn btn-primary btn-sm" onclick="recordSnapshot().then(()=>{renderEvolucao();showNotification('Snapshot registrado!');});">
+            Registrar Snapshot
+        </button>
+    </div>
+    <div id="evo-stats" class="stats-grid"></div>
+    <div id="evo-period-filter" class="btn-group"></div>
+
+    <h3 style="color:var(--green);margin:15px 0 10px;">Patrimonio Total ao Longo do Tempo</h3>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:15px;">
+        <canvas id="evo-chart-patrimonio" style="width:100%;height:300px;"></canvas>
+    </div>
+
+    <h3 style="color:var(--green);margin:25px 0 10px;">Evolucao por Tipo de Ativo</h3>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:15px;">
+        <canvas id="evo-chart-tipos" style="width:100%;height:300px;"></canvas>
+    </div>
+
+    <h3 style="color:var(--green);margin:25px 0 10px;">Rentabilidade Total (%)</h3>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:15px;">
+        <canvas id="evo-chart-rentab" style="width:100%;height:250px;"></canvas>
+    </div>
+
+    <h3 style="color:var(--green);margin:25px 0 10px;">Dividendos Mensais Estimados ao Longo do Tempo</h3>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:15px;">
+        <canvas id="evo-chart-dividendos" style="width:100%;height:250px;"></canvas>
+    </div>
+
+    <div id="evo-empty" style="display:none;text-align:center;padding:60px 20px;">
+        <p style="font-size:2em;margin-bottom:15px;opacity:.5;">📈</p>
+        <p style="color:var(--muted);font-size:1.1em;">Nenhum dado de evolucao disponivel ainda.</p>
+        <p style="color:var(--muted);font-size:.9em;margin-top:8px;">Os snapshots sao registrados automaticamente quando as cotacoes sao atualizadas.</p>
+        <button class="btn btn-primary" onclick="recordSnapshot().then(()=>{renderEvolucao();showNotification('Primeiro snapshot registrado!');});" style="margin-top:20px;">
+            Registrar Primeiro Snapshot Agora
+        </button>
+    </div>
+</div>
+
+</main>
+</div>
+
+<!-- MODAL PROVENTO -->
+<div class="modal-overlay" id="modal-provento">
+<div class="modal">
+    <h3>Registrar Provento Recebido</h3>
+    <div class="form-grid">
+        <div class="form-group"><label>Ticker</label>
+            <select id="prov-ticker"></select>
+        </div>
+        <div class="form-group"><label>Data</label><input type="date" id="prov-data"></div>
+        <div class="form-group"><label>Valor Total (R$)</label><input type="number" id="prov-valor" step="0.01"></div>
+        <div class="form-group"><label>Tipo</label>
+            <select id="prov-tipo">
+                <option>Dividendo</option><option>JCP</option><option>Rendimento</option><option>Bonificacao</option>
+            </select>
+        </div>
+    </div>
+    <div class="btn-group">
+        <button class="btn btn-primary" onclick="addProvento()">Salvar</button>
+        <button class="btn btn-danger" onclick="closeModal('modal-provento')">Cancelar</button>
+    </div>
+</div>
+</div>
+
+<!-- MODAL IMPORTAR PROVENTOS -->
+<div class="modal-overlay" id="modal-import-prov">
+<div class="modal" style="max-width:700px;">
+    <h3>Importar Proventos via Excel/CSV</h3>
+    <p style="font-size:.85em;color:var(--muted);margin-bottom:12px;">
+        O arquivo deve ter as colunas: <strong>Ticker</strong>, <strong>Data</strong>, <strong>Valor</strong>, <strong>Tipo</strong> (opcional).<br>
+        Formatos aceitos: <strong>.csv</strong>, <strong>.xlsx</strong>, <strong>.xls</strong>. A primeira linha deve ser o cabecalho.
+    </p>
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:15px;">
+        <label class="btn btn-primary btn-sm" style="margin:0;cursor:pointer;">
+            Escolher Arquivo
+            <input type="file" id="import-prov-file" accept=".csv,.xlsx,.xls" style="display:none;" onchange="previewImportProventos(this)">
+        </label>
+        <span id="import-prov-filename" style="font-size:.85em;color:var(--muted);">Nenhum arquivo selecionado</span>
+    </div>
+    <div id="import-prov-preview" style="max-height:300px;overflow-y:auto;margin-bottom:15px;"></div>
+    <div id="import-prov-summary" style="font-size:.85em;margin-bottom:15px;"></div>
+    <div class="btn-group">
+        <button class="btn btn-primary" id="import-prov-btn" onclick="confirmImportProventos()" disabled>Importar Todos</button>
+        <button class="btn btn-danger" onclick="closeModal('modal-import-prov')">Cancelar</button>
+    </div>
+    <div style="margin-top:15px;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;">
+        <p style="font-size:.8em;color:var(--muted);margin-bottom:6px;">Exemplo de CSV:</p>
+        <pre style="font-size:.75em;color:var(--green);margin:0;white-space:pre-wrap;">Ticker,Data,Valor,Tipo
+BBAS3,2025-01-15,125.50,Dividendo
+TAEE11,2025-01-20,89.30,JCP
+RURA11,2025-02-10,45.00,Rendimento</pre>
+    </div>
+</div>
+</div>
+
+<!-- MODAL IMPORTAR PROVENTOS VIA API -->
+<div class="modal-overlay" id="modal-import-api">
+<div class="modal" style="max-width:750px;">
+    <h3>Importar Proventos via API (brapi.dev)</h3>
+    <p style="font-size:.85em;color:var(--muted);margin-bottom:12px;">
+        Busca automaticamente os proventos pagos de cada ativo da carteira via API.<br>
+        O valor e calculado: <strong>valor por acao × quantidade</strong>. Duplicatas sao detectadas automaticamente.
+    </p>
+    <div id="import-api-status" class="import-api-progress" style="display:none;">
+        <div class="status" id="import-api-status-text">Buscando...</div>
+        <div class="bar"><div class="bar-inner" id="import-api-bar" style="width:0%"></div></div>
+    </div>
+    <div id="import-api-preview" style="max-height:350px;overflow-y:auto;margin-bottom:10px;"></div>
+    <div id="import-api-summary" class="import-api-summary" style="display:none;"></div>
+    <div class="btn-group">
+        <button class="btn btn-primary btn-sm" id="import-api-fetch-btn" onclick="fetchProventosAPI()">Buscar Proventos</button>
+        <button class="btn btn-primary btn-sm" id="import-api-confirm-btn" onclick="confirmImportProventosAPI()" style="display:none;">Importar Selecionados</button>
+        <button class="btn btn-danger btn-sm" onclick="closeModal('modal-import-api')">Cancelar</button>
+    </div>
+</div>
+</div>
+
+<script>
+// ============================================
+// ACCESS CONTROL (Google Auth Gate)
+// ============================================
+const ALLOWED_EMAILS = ['iurimec9@gmail.com'];
+const GOOGLE_CLIENT_ID_VALUE = '344393499582-34int22l2fg9aoa7iivd3pkl7re65rrr.apps.googleusercontent.com';
+const AUTH_SESSION_KEY = 'gestorCarteira_authSession';
+const AUTH_SESSION_DURATION = 30 * 60 * 1000; // 30 minutos
+let authVerified = false;
+
+function getAuthSession() {
+    try {
+        const raw = localStorage.getItem(AUTH_SESSION_KEY);
+        if (!raw) return null;
+        const session = JSON.parse(raw);
+        if (Date.now() - session.timestamp > AUTH_SESSION_DURATION) {
+            localStorage.removeItem(AUTH_SESSION_KEY);
+            return null;
+        }
+        return session;
+    } catch(e) { return null; }
+}
+
+function saveAuthSession(token, email) {
+    localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({
+        token: token, email: email, timestamp: Date.now()
+    }));
+}
+
+function clearAuthSession() {
+    localStorage.removeItem(AUTH_SESSION_KEY);
+}
+
+// Tenta restaurar sessao salva sem pedir login
+function tryRestoreSession() {
+    const session = getAuthSession();
+    if (!session) return false;
+    // Validar token com uma chamada leve
+    fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { 'Authorization': 'Bearer ' + session.token }
+    }).then(r => {
+        if (r.ok) return r.json();
+        throw new Error('Token expirado');
+    }).then(userData => {
+        const email = (userData.email || '').toLowerCase();
+        if (ALLOWED_EMAILS.includes(email)) {
+            authVerified = true;
+            // Reaproveitar token para Google Sheets tambem
+            googleAccessToken = session.token;
+            sessionStorage.setItem('googleAccessToken', session.token);
+            document.getElementById('auth-overlay').style.display = 'none';
+            initApp();
+        } else {
+            clearAuthSession();
+            document.getElementById('auth-overlay').style.display = 'flex';
+        }
+    }).catch(() => {
+        clearAuthSession();
+        document.getElementById('auth-overlay').style.display = 'flex';
+    });
+    return true;
+}
+
+function authWithGoogle() {
+    const errorEl = document.getElementById('auth-error');
+    errorEl.textContent = '';
+
+    if (GOOGLE_CLIENT_ID_VALUE.includes('SEU_CLIENT_ID_AQUI')) {
+        errorEl.textContent = 'Client ID do Google nao configurado. Edite o codigo e substitua SEU_CLIENT_ID_AQUI.';
+        return;
+    }
+
+    if (typeof google === 'undefined' || !google.accounts) {
+        errorEl.textContent = 'Google Identity Services ainda carregando. Tente novamente em alguns segundos.';
+        return;
+    }
+
+    // Scopes unificados: email + sheets + drive (login unico)
+    const client = google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_CLIENT_ID_VALUE,
+        scope: 'email profile https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file',
+        callback: async (resp) => {
+            if (resp.error) {
+                errorEl.textContent = 'Erro ao autenticar: ' + resp.error;
+                return;
+            }
+            try {
+                const userResp = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                    headers: { 'Authorization': 'Bearer ' + resp.access_token }
+                });
+                const userData = await userResp.json();
+                const email = (userData.email || '').toLowerCase();
+
+                if (ALLOWED_EMAILS.includes(email)) {
+                    authVerified = true;
+                    // Salvar sessao por 30 min
+                    saveAuthSession(resp.access_token, email);
+                    // Reaproveitar token para Google Sheets
+                    googleAccessToken = resp.access_token;
+                    sessionStorage.setItem('googleAccessToken', resp.access_token);
+                    document.getElementById('auth-overlay').style.display = 'none';
+                    initApp();
+                } else {
+                    errorEl.textContent = 'Acesso negado. O email ' + email + ' nao esta autorizado.';
+                }
+            } catch(e) {
+                errorEl.textContent = 'Erro ao verificar email: ' + e.message;
+            }
+        }
+    });
+    client.requestAccessToken();
+}
+
+// ============================================
+// CRYPTO (AES-256-GCM + PBKDF2)
+// ============================================
+const CRYPTO_STORAGE_KEY = 'gestorCarteira_crypto';
+const CRYPTO_VERIFY_TOKEN = 'GESTOR_CARTEIRA_OK';
+const PBKDF2_ITERATIONS = 600000;
+
+let sessionCryptoKey = null;
+let sessionSalt = null;
+
+function hexToBytes(hex) {
+    const bytes = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < hex.length; i += 2) bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
+    return bytes;
+}
+function bytesToHex(bytes) {
+    return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+function generateSalt() { return crypto.getRandomValues(new Uint8Array(16)); }
+function generateIV() { return crypto.getRandomValues(new Uint8Array(12)); }
+
+async function deriveKey(password, salt) {
+    const enc = new TextEncoder();
+    const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' },
+        keyMaterial,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['encrypt', 'decrypt']
+    );
+}
+
+async function encryptData(key, plaintext) {
+    const enc = new TextEncoder();
+    const iv = generateIV();
+    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(plaintext));
+    return { iv: bytesToHex(iv), data: bytesToHex(new Uint8Array(ct)) };
+}
+
+async function decryptData(key, ivHex, dataHex) {
+    const iv = hexToBytes(ivHex);
+    const data = hexToBytes(dataHex);
+    const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
+    return new TextDecoder().decode(pt);
+}
+
+async function verifyPassword(password, cryptoStore) {
+    const salt = hexToBytes(cryptoStore.salt);
+    const key = await deriveKey(password, salt);
+    try {
+        const token = await decryptData(key, cryptoStore.verifyIV, cryptoStore.verifyData);
+        if (token === CRYPTO_VERIFY_TOKEN) return key;
+    } catch(e) { /* senha incorreta */ }
+    return null;
+}
+
+// ============================================
+// STATE MANAGEMENT
+// ============================================
+const DEFAULT_STATE = {
+    ativos: [
+        {ticker:'TAEE11',tipo:'Dividendos',qtd:118,pm:31.83,preco:44.42,dy:23.83,pesoAlvo:3,stop:35},
+        {ticker:'PETR4',tipo:'Dividendos',qtd:80,pm:30.77,preco:38.08,dy:24.05,pesoAlvo:2.5,stop:45},
+        {ticker:'EGIE3',tipo:'Dividendos',qtd:240,pm:36.41,preco:34.97,dy:5.85,pesoAlvo:4,stop:50},
+        {ticker:'BBAS3',tipo:'Dividendos',qtd:453,pm:25.87,preco:25.26,dy:9.02,pesoAlvo:5,stop:36},
+        {ticker:'VALE3',tipo:'Dividendos',qtd:113,pm:65.27,preco:86.69,dy:8.25,pesoAlvo:3,stop:81.25},
+        {ticker:'CMIG4',tipo:'Dividendos',qtd:556,pm:10.79,preco:11.92,dy:9.26,pesoAlvo:3.5,stop:25},
+        {ticker:'BBSE3',tipo:'Dividendos',qtd:150,pm:22.88,preco:38.95,dy:7.49,pesoAlvo:3.5,stop:35},
+        {ticker:'VIVT3',tipo:'Dividendos',qtd:160,pm:19.99,preco:37.71,dy:6.88,pesoAlvo:3.5,stop:53},
+        {ticker:'BBDC4',tipo:'Dividendos',qtd:434,pm:13.45,preco:21.54,dy:5.8,pesoAlvo:4,stop:40},
+        {ticker:'ITSA4',tipo:'Dividendos',qtd:623,pm:9.31,preco:15.00,dy:7.23,pesoAlvo:4,stop:23.59},
+        {ticker:'IVVB11',tipo:'Valor',qtd:0,pm:233.65,preco:404.45,dy:0,pesoAlvo:5,stop:0},
+        {ticker:'IPCA+2065',tipo:'Valor',qtd:174.25,pm:175.03,preco:174.28,dy:0,pesoAlvo:15,stop:0},
+        {ticker:'BTC',tipo:'Cripto',qtd:0.00427773,pm:467537.69,preco:351768.35,dy:0,pesoAlvo:2,stop:0},
+        {ticker:'RURA11',tipo:'FIIs',qtd:1291,pm:9.57,preco:8.83,dy:13.15,pesoAlvo:4.75,stop:12},
+        {ticker:'VGIA11',tipo:'FIIs',qtd:1179,pm:8.45,preco:10.33,dy:15.34,pesoAlvo:4.75,stop:12},
+        {ticker:'HCTR11',tipo:'FIIs',qtd:131,pm:124.20,preco:21.34,dy:6.41,pesoAlvo:0,stop:140},
+        {ticker:'IRIM11',tipo:'FIIs',qtd:284,pm:109.33,preco:64.70,dy:11.01,pesoAlvo:4,stop:140},
+        {ticker:'VRTA11',tipo:'FIIs',qtd:152,pm:99.30,preco:78.82,dy:11.50,pesoAlvo:2,stop:140},
+        {ticker:'VGIP11',tipo:'FIIs',qtd:182,pm:102.87,preco:80.98,dy:14.50,pesoAlvo:2,stop:140},
+        {ticker:'RECR11',tipo:'FIIs',qtd:157,pm:94.91,preco:82.48,dy:12.34,pesoAlvo:5,stop:140},
+        {ticker:'XPML11',tipo:'FIIs',qtd:79,pm:104.21,preco:110.32,dy:11.00,pesoAlvo:5,stop:140},
+        {ticker:'BTLG11',tipo:'FIIs',qtd:80,pm:102.75,preco:102.66,dy:10.00,pesoAlvo:6,stop:0},
+        {ticker:'CAIXA',tipo:'Caixa',qtd:1,pm:20000,preco:20000,dy:1,pesoAlvo:8.5,stop:0},
+    ],
+    proventos: [],
+    historico: [],
+    metaMensal: 20000,
+    // Dados historicos de dividendos da planilha (2020-2025)
+    divMensal: [{"m":"2020-06","v":8.98},{"m":"2020-07","v":3},{"m":"2020-08","v":123.89},{"m":"2020-09","v":49.01},{"m":"2020-10","v":51.39},{"m":"2020-11","v":124.71},{"m":"2020-12","v":83.66},{"m":"2021-01","v":131.03},{"m":"2021-02","v":131.66},{"m":"2021-03","v":124.99},{"m":"2021-04","v":174.33},{"m":"2021-05","v":289.76},{"m":"2021-06","v":202.92},{"m":"2021-07","v":232.5},{"m":"2021-08","v":406.22},{"m":"2021-09","v":844.28},{"m":"2021-10","v":977.34},{"m":"2021-11","v":1073.4},{"m":"2021-12","v":1428.01},{"m":"2022-01","v":1228.29},{"m":"2022-02","v":1177.82},{"m":"2022-03","v":787.53},{"m":"2022-04","v":1279.7},{"m":"2022-05","v":1687.14},{"m":"2022-06","v":1944.76},{"m":"2022-07","v":1428.35},{"m":"2022-08","v":1543.23},{"m":"2022-09","v":1213.55},{"m":"2022-10","v":921.19},{"m":"2022-11","v":668.81},{"m":"2022-12","v":935.44},{"m":"2023-01","v":1118.68},{"m":"2023-02","v":804.65},{"m":"2023-03","v":1096.74},{"m":"2023-04","v":939.67},{"m":"2023-05","v":1040.46},{"m":"2023-06","v":1081.74},{"m":"2023-07","v":920.66},{"m":"2023-08","v":1020.78},{"m":"2023-09","v":876.94},{"m":"2023-10","v":770.85},{"m":"2023-11","v":944.25},{"m":"2023-12","v":952.4},{"m":"2024-01","v":1108.58},{"m":"2024-02","v":898.39},{"m":"2024-03","v":1116.97},{"m":"2024-04","v":1355.03},{"m":"2024-05","v":1580.63},{"m":"2024-06","v":1428.87},{"m":"2024-07","v":1377.5},{"m":"2024-08","v":1212.4},{"m":"2024-09","v":1069.1},{"m":"2024-10","v":1043.26},{"m":"2024-11","v":1099.13},{"m":"2024-12","v":1090.13},{"m":"2025-01","v":2018.47},{"m":"2025-02","v":1779.63},{"m":"2025-03","v":1195.54},{"m":"2025-04","v":1755.49},{"m":"2025-05","v":2371.63},{"m":"2025-06","v":2263.74},{"m":"2025-07","v":1471.22},{"m":"2025-08","v":1340.17},{"m":"2025-09","v":1278.06},{"m":"2025-10","v":1271.23},{"m":"2025-11","v":1537.63},{"m":"2025-12","v":1338.65}],
+    divAnual: [{"y":"2020","v":444.64},{"y":"2021","v":6016.44},{"y":"2022","v":14815.81},{"y":"2023","v":11566.82},{"y":"2024","v":14379.99},{"y":"2025","v":19621.46}],
+    divPorTicker: [{"t":"IRDM11","v":10955.94},{"t":"VGIP11","v":9248.32},{"t":"RECR11","v":7008.4},{"t":"VRTA11","v":6688.52},{"t":"HCTR11","v":5339.73},{"t":"MCCI11","v":4765.1},{"t":"VGIA11","v":3126.74},{"t":"PETR4","v":3112.82},{"t":"VIVT3","v":2274.55},{"t":"RURA11","v":2175.47},{"t":"BBSE3","v":1959.64},{"t":"TAEE11","v":1249.21},{"t":"VALE3","v":1170.22},{"t":"ITSA4","v":1012.45},{"t":"EGIE3","v":914.4},{"t":"BBAS3","v":730.05},{"t":"CMIG4","v":702.8},{"t":"RAPT4","v":642.02},{"t":"SAPR4","v":448.57},{"t":"KLBN4","v":334.32},{"t":"BBDC4","v":311.05},{"t":"B3SA3","v":294.06},{"t":"ABCB4","v":276.44},{"t":"GOAU4","v":249.66},{"t":"XPML11","v":242.88},{"t":"BTLG11","v":183.28},{"t":"ENBR3","v":171.26},{"t":"PNVL3","v":168.52},{"t":"BEEF3","v":152.02},{"t":"BRSR3","v":139.84},{"t":"SANB11","v":125.11},{"t":"WEGE3","v":124.32},{"t":"IRIM15","v":90.22},{"t":"TRIS3","v":84.92},{"t":"JBSS3","v":80},{"t":"MRVE3","v":66.78},{"t":"FLRY3","v":57.29},{"t":"ODPV3","v":43.39},{"t":"WIZC3","v":42.52},{"t":"SULA11","v":33.12},{"t":"AESB3","v":22.68},{"t":"CSAN3","v":8.98},{"t":"VIVT4","v":7.92},{"t":"BBAS3 ","v":7},{"t":"BBDC4 ","v":7},{"t":"CPLE6","v":3.5}],
+    totalDivRecebidos: 66845.16,
+    snapshots: [],
+    deletedTickers: [],
+};
+
+let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+
+function mergeWithDefaults(saved) {
+    if(!saved.deletedTickers) saved.deletedTickers = [];
+    DEFAULT_STATE.ativos.forEach(da => {
+        if(!saved.ativos.find(a => a.ticker === da.ticker) && !saved.deletedTickers.includes(da.ticker)) {
+            saved.ativos.push(JSON.parse(JSON.stringify(da)));
+        }
+    });
+    if(DEFAULT_STATE.proventos.length > (saved.proventos||[]).length) {
+        if(!saved.proventos) saved.proventos = [];
+        const savedKeys = new Set(saved.proventos.map(p => p.ticker+'|'+p.data+'|'+p.valor));
+        DEFAULT_STATE.proventos.forEach(dp => {
+            if(!savedKeys.has(dp.ticker+'|'+dp.data+'|'+dp.valor)) {
+                saved.proventos.push(dp);
+            }
+        });
+    }
+    if(!saved.divMensal) saved.divMensal = DEFAULT_STATE.divMensal;
+    if(!saved.divAnual) saved.divAnual = DEFAULT_STATE.divAnual;
+    if(!saved.divPorTicker) saved.divPorTicker = DEFAULT_STATE.divPorTicker;
+    if(!saved.totalDivRecebidos) saved.totalDivRecebidos = DEFAULT_STATE.totalDivRecebidos;
+    if(!saved.snapshots) saved.snapshots = [];
+    return saved;
+}
+
+function loadStatePlaintext() {
+    try {
+        const s = localStorage.getItem('gestorCarteira_v2');
+        if (s) { return mergeWithDefaults(JSON.parse(s)); }
+    } catch(e) {}
+    return null;
+}
+
+async function loadStateEncrypted(key, cryptoStore) {
+    const json = await decryptData(key, cryptoStore.dataIV, cryptoStore.dataEncrypted);
+    const saved = JSON.parse(json);
+    return mergeWithDefaults(saved);
+}
+
+async function saveState() {
+    if (sessionCryptoKey && sessionSalt) {
+        const stateJSON = JSON.stringify(state);
+        const encrypted = await encryptData(sessionCryptoKey, stateJSON);
+        const verify = await encryptData(sessionCryptoKey, CRYPTO_VERIFY_TOKEN);
+        const cryptoStore = {
+            salt: bytesToHex(sessionSalt),
+            verifyIV: verify.iv,
+            verifyData: verify.data,
+            dataIV: encrypted.iv,
+            dataEncrypted: encrypted.data
+        };
+        localStorage.setItem(CRYPTO_STORAGE_KEY, JSON.stringify(cryptoStore));
+        localStorage.removeItem('gestorCarteira_v2');
+    } else {
+        localStorage.setItem('gestorCarteira_v2', JSON.stringify(state));
+    }
+}
+
+// ============================================
+// HELPERS
+// ============================================
+const fmt = (v) => 'R$ ' + v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtPct = (v) => (v>=0?'+':'')+v.toFixed(2)+'%';
+const fmtK = (v) => v>=1e6? fmt(v/1e6).replace('R$','R$')+'M' : v>=1e3? 'R$ '+Math.round(v/1e3)+'k' : fmt(v);
+
+function getPatrimonio(a) { return a.qtd * a.preco; }
+function getInvestido(a) { return a.qtd * a.pm; }
+function getGanho(a) { return getPatrimonio(a) - getInvestido(a); }
+function getRentab(a) { const inv=getInvestido(a); return inv>0?((getPatrimonio(a)/inv)-1)*100:0; }
+function getDivAnual(a) { return getPatrimonio(a) * (a.dy/100); }
+function getTotalPatrimonio() { return state.ativos.reduce((s,a)=>s+getPatrimonio(a),0); }
+function getTotalInvestido() { return state.ativos.reduce((s,a)=>s+getInvestido(a),0); }
+function getPesoAtual(a) { const t=getTotalPatrimonio(); return t>0?(getPatrimonio(a)/t)*100:0; }
+
+const COLORS = ['#00d4aa','#ffd700','#ff5252','#4fc3f7','#ab47bc','#ff7043','#66bb6a','#ef5350','#42a5f5','#ffa726','#8d6e63','#78909c','#26a69a','#ec407a','#7e57c2','#d4e157','#29b6f6','#9ccc65','#5c6bc0','#26c6da','#ffca28','#8bc34a'];
+
+// ============================================
+// SORT TABLES
+// ============================================
+const sortState = {};
+const sortActiveCol = {}; // { tableWrapId: colIdx } - rastreia a ultima coluna ordenada por tabela
+
+function makeTableSortable(tableEl) {
+    if (!tableEl) return;
+    const ths = tableEl.querySelectorAll('thead th');
+    ths.forEach((th, colIdx) => {
+        th.innerHTML = th.textContent.trim() + ' <span class="sort-arrow">&#x25B2;</span>';
+        th.addEventListener('click', function() {
+            sortTableByCol(tableEl, colIdx, th);
+        });
+    });
+}
+
+function sortTableByCol(tableEl, colIdx, thEl) {
+    const tbody = tableEl.querySelector('tbody');
+    if (!tbody) return;
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    // Filtrar fora a linha de TOTAL (ultima linha com background especial)
+    const totalRow = rows.find(r => {
+        const tds = r.querySelectorAll('td');
+        return Array.from(tds).some(td => td.textContent.trim() === 'TOTAL');
+    });
+    const emptyRow = rows.find(r => {
+        const td = r.querySelector('td[colspan]');
+        return td !== null;
+    });
+    const dataRows = rows.filter(r => r !== totalRow && r !== emptyRow);
+    if (dataRows.length <= 1) return;
+
+    const tableId = tableEl.closest('.table-wrap')?.id || tableEl.parentElement?.id || 'unknown';
+    const key = tableId + '_' + colIdx;
+    sortActiveCol[tableId] = colIdx;
+
+    // Toggle: primeiro clique desc, segundo asc
+    if (!sortState[key] || sortState[key] === 'asc') {
+        sortState[key] = 'desc';
+    } else {
+        sortState[key] = 'asc';
+    }
+    const dir = sortState[key];
+
+    // Limpar estado visual de todos os th
+    tableEl.querySelectorAll('thead th').forEach(t => {
+        t.classList.remove('sorted');
+        const arrow = t.querySelector('.sort-arrow');
+        if (arrow) arrow.innerHTML = '&#x25B2;';
+    });
+    thEl.classList.add('sorted');
+    const arrow = thEl.querySelector('.sort-arrow');
+    if (arrow) arrow.innerHTML = dir === 'desc' ? '&#x25BC;' : '&#x25B2;';
+
+    dataRows.sort((a, b) => {
+        const cellA = a.querySelectorAll('td')[colIdx];
+        const cellB = b.querySelectorAll('td')[colIdx];
+        if (!cellA || !cellB) return 0;
+        let valA = cellA.textContent.trim();
+        let valB = cellB.textContent.trim();
+
+        // Extrair valor numerico (R$, %, +, -, etc)
+        const numA = parseNumericValue(valA);
+        const numB = parseNumericValue(valB);
+
+        if (numA !== null && numB !== null) {
+            return dir === 'desc' ? numB - numA : numA - numB;
+        }
+        // Ordenacao por string
+        return dir === 'desc' ? valB.localeCompare(valA, 'pt-BR') : valA.localeCompare(valB, 'pt-BR');
+    });
+
+    dataRows.forEach(r => tbody.appendChild(r));
+    if (totalRow) tbody.appendChild(totalRow);
+    if (emptyRow) tbody.appendChild(emptyRow);
+}
+
+function parseNumericValue(str) {
+    if (!str || str === '-' || str === '') return null;
+    // Remover R$, %, +, espacos, pontos de milhar, trocar virgula por ponto
+    let cleaned = str.replace(/R\$\s*/g, '').replace(/%/g, '').replace(/\+/g, '').replace(/[a-zA-Z]/g, '').trim();
+    // Formato brasileiro: 1.234,56 -> 1234.56
+    if (cleaned.includes(',')) {
+        cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+    }
+    const num = parseFloat(cleaned);
+    return isNaN(num) ? null : num;
+}
+
+// Aplicar sort em todas as tabelas visíveis apos render
+function applySortableToAll() {
+    document.querySelectorAll('.table-wrap table').forEach(t => {
+        if (!t.dataset.sortable) {
+            t.dataset.sortable = '1';
+            makeTableSortable(t);
+        }
+    });
+}
+
+// Reaplicar ordenacao ativa apos re-render de uma tabela
+function reapplySort(tableWrapId) {
+    if (sortActiveCol[tableWrapId] === undefined) return;
+    const activeCol = sortActiveCol[tableWrapId];
+    const key = tableWrapId + '_' + activeCol;
+    const activeDir = sortState[key];
+    if (!activeDir) return;
+
+    // Aguardar o MutationObserver aplicar makeTableSortable na tabela nova
+    setTimeout(() => {
+        const wrap = document.getElementById(tableWrapId);
+        if (!wrap) return;
+        const tableEl = wrap.querySelector('table');
+        if (!tableEl) return;
+        const th = tableEl.querySelectorAll('thead th')[activeCol];
+        if (!th) return;
+
+        // Inverter o estado para que o toggle dentro de sortTableByCol restaure a direcao correta
+        sortState[key] = activeDir === 'desc' ? 'asc' : 'desc';
+        sortTableByCol(tableEl, activeCol, th);
+    }, 10);
+}
+
+// Observer para aplicar sort quando tabelas sao re-renderizadas
+const sortObserver = new MutationObserver(() => {
+    document.querySelectorAll('.table-wrap table, .main table').forEach(t => {
+        if (!t.dataset.sortable) {
+            t.dataset.sortable = '1';
+            makeTableSortable(t);
+        }
+    });
+});
+sortObserver.observe(document.querySelector('.main'), { childList: true, subtree: true });
+
+function getOportunidade(a) {
+    if(!a.qtd || a.qtd <= 0) return '';
+    const precoAbaixoPM = a.preco < a.pm && a.preco > 0 && a.pm > 0;
+    const pesoAbaixoAlvo = getPesoAtual(a) < a.pesoAlvo && a.pesoAlvo > 0;
+    const totalPat = getTotalPatrimonio();
+    const divAnualTotal = state.ativos.reduce((s,x)=>s+getDivAnual(x),0);
+    const dyMedio = totalPat > 0 ? (divAnualTotal/totalPat)*100 : 0;
+    const dyAcimaDaMedia = a.dy > dyMedio && a.dy > 0;
+    const oPreco = precoAbaixoPM && pesoAbaixoAlvo;
+    const oDY = dyAcimaDaMedia && pesoAbaixoAlvo;
+    if(oPreco && oDY) return 'dupla';
+    if(oPreco) return 'preco';
+    if(oDY) return 'dy';
+    return '';
+}
+
+// ============================================
+// NAVIGATION
+// ============================================
+function showPage(id) {
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    const navMap = {dashboard:0, carteira:1, dividendos:2, rebalancear:3, simulador:4, adicionar:5, historico:6, evolucao:7, senha:8};
+    const navItems = document.querySelectorAll('.nav-item');
+    if(navMap[id] !== undefined && navItems[navMap[id]]) navItems[navMap[id]].classList.add('active');
+    renderPage(id);
+}
+function renderPage(id) {
+    switch(id) {
+        case 'dashboard': renderDashboard(); break;
+        case 'carteira':
+            document.querySelectorAll('#carteira .tab-btn').forEach(b=>b.classList.remove('active'));
+            document.querySelector('#carteira .tab-btn').classList.add('active');
+            renderCarteira('all');
+            break;
+        case 'dividendos': renderDividendos(); break;
+        case 'rebalancear': calcRebalance(); break;
+        case 'simulador':
+            document.getElementById('sim-pat').value = Math.round(getTotalPatrimonio());
+            break;
+        case 'historico': renderHistorico(); break;
+        case 'evolucao': renderEvolucao(); break;
+    }
+}
+
+// ============================================
+// DASHBOARD
+// ============================================
+function renderDashboard() {
+    const total = getTotalPatrimonio();
+    const investido = getTotalInvestido();
+    const ganho = total - investido;
+    const rentab = investido>0?((total/investido)-1)*100:0;
+    const divAnual = state.ativos.reduce((s,a)=>s+getDivAnual(a),0);
+    const divMensal = divAnual/12;
+    const dyMedio = total>0?(divAnual/total)*100:0;
+    const anoAtualDash = new Date().getFullYear().toString();
+    const divAnualDataDash = state.divAnual || [];
+    const recebidoAnoDash = divAnualDataDash.find(d => d.y === anoAtualDash);
+    const recebidoAnoValDash = recebidoAnoDash ? recebidoAnoDash.v : 0;
+
+    document.getElementById('dash-stats').innerHTML = `
+        <div class="stat-card"><div class="value">${fmt(total)}</div><div class="label">Patrimonio Total</div></div>
+        <div class="stat-card"><div class="value ${ganho>=0?'':'red'}">${fmt(ganho)}</div><div class="label">Ganho Total (${fmtPct(rentab)})</div></div>
+        <div class="stat-card"><div class="value gold">${fmt(recebidoAnoValDash)}</div><div class="label">Recebido em ${anoAtualDash}</div></div>
+        <div class="stat-card"><div class="value gold">${fmt(divMensal)}</div><div class="label">Dividendos/mes (est.)</div></div>
+        <div class="stat-card"><div class="value">${dyMedio.toFixed(2)}%</div><div class="label">DY Medio Ponderado</div></div>
+        <div class="stat-card"><div class="value">${state.ativos.filter(a=>a.qtd>0).length}</div><div class="label">Ativos com Posicao</div></div>
+        <div class="stat-card"><div class="value gold">${fmt(divAnual)}</div><div class="label">Dividendos Anuais (est.)</div></div>
+    `;
+
+    // Alocacao por tipo
+    const tipos = {};
+    state.ativos.forEach(a => { if(a.qtd>0) { tipos[a.tipo] = (tipos[a.tipo]||0) + getPatrimonio(a); }});
+    let allocHtml = '';
+    const tipoColors = {Dividendos:'#00d4aa',FIIs:'#ffd700',Valor:'#4fc3f7',Cripto:'#ff7043',Caixa:'#ab47bc'};
+    Object.entries(tipos).sort((a,b)=>b[1]-a[1]).forEach(([tipo,val]) => {
+        const pct = (val/total*100);
+        allocHtml += `<div class="bar-row">
+            <div class="bar-label">${tipo}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${tipoColors[tipo]||'#888'}">${pct.toFixed(1)}%</div></div>
+            <div class="bar-value">${fmt(val)}</div>
+        </div>`;
+    });
+    document.getElementById('dash-alloc-chart').innerHTML = allocHtml;
+
+    // Top 5 rentabilidade
+    const sorted = [...state.ativos].filter(a=>a.qtd>0).sort((a,b)=>getRentab(b)-getRentab(a)).slice(0,5);
+    let topHtml = '';
+    sorted.forEach((a,i) => {
+        const r = getRentab(a);
+        topHtml += `<div class="bar-row">
+            <div class="bar-label" style="color:var(--text)">${a.ticker}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${Math.min(Math.abs(r)/2,100)}%;background:${r>=0?'var(--green)':'var(--red)'}">${fmtPct(r)}</div></div>
+            <div class="bar-value ${r>=0?'positive':'negative'}">${fmt(getGanho(a))}</div>
+        </div>`;
+    });
+    document.getElementById('dash-top5').innerHTML = topHtml;
+
+    // Progresso aposentadoria
+    const meta = state.metaMensal;
+    const necessario = (meta*12)/(dyMedio/100||0.08);
+    const pct = Math.min((total/necessario)*100,100);
+    document.getElementById('dash-progress').innerHTML = `
+        <div class="progress-wrap">
+            <div class="progress-label"><span>Atual: ${fmt(total)}</span><span>Meta: ${fmt(necessario)} (${fmt(meta)}/mes)</span></div>
+            <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:linear-gradient(90deg,var(--green),var(--green2))">${pct.toFixed(1)}%</div></div>
+        </div>
+        <p style="font-size:.85em;color:var(--muted);margin-top:8px;">Dividendos mensais atuais: ${fmt(divMensal)} de ${fmt(meta)} (${(divMensal/meta*100).toFixed(1)}% da meta)</p>
+    `;
+
+    // Oportunidades de aporte
+    const oportunidades = state.ativos.filter(a=>a.qtd>0&&getOportunidade(a)!=='');
+    let oportHtml = '';
+    if(oportunidades.length > 0) {
+        oportHtml = '<div class="stats-grid">';
+        oportunidades.forEach(a => {
+            const oport = getOportunidade(a);
+            const peso = getPesoAtual(a);
+            const desconto = a.pm>0?((1-a.preco/a.pm)*100):0;
+            const borderColor = oport==='dupla'?'#00ff88':oport==='preco'?'var(--green2)':'var(--gold)';
+            const badgeClass = oport==='dupla'?'oport-badge-dupla':oport==='preco'?'oport-badge-preco':'oport-badge-dy';
+            oportHtml += `<div class="stat-card" style="border-left:3px solid ${borderColor}">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div class="value" style="font-size:1.2em">${a.ticker}</div>
+                    <span class="oport-badge ${badgeClass}">${oport.toUpperCase()}</span>
+                </div>
+                <div style="font-size:.8em;color:var(--muted);margin-top:6px;">
+                    ${oport!=='dy'?'Desconto: <span style="color:var(--green2)">'+desconto.toFixed(1)+'%</span> | ':''}
+                    DY: <span style="color:var(--gold)">${a.dy.toFixed(1)}%</span> |
+                    Peso: ${peso.toFixed(1)}% / ${a.pesoAlvo.toFixed(1)}%
+                </div>
+            </div>`;
+        });
+        oportHtml += '</div>';
+    } else {
+        oportHtml = '<p style="color:var(--muted);font-size:.9em;">Nenhuma oportunidade identificada no momento.</p>';
+    }
+    document.getElementById('dash-oportunidades').innerHTML = oportHtml;
+
+    // Peso por ativo
+    let weightHtml = '';
+    state.ativos.filter(a=>a.qtd>0).sort((a,b)=>getPatrimonio(b)-getPatrimonio(a)).forEach((a,i) => {
+        const p = getPesoAtual(a);
+        weightHtml += `<div class="bar-row">
+            <div class="bar-label" style="color:var(--text)">${a.ticker}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${p}%;background:${COLORS[i%COLORS.length]}">${p.toFixed(1)}%</div></div>
+            <div class="bar-value">${fmt(getPatrimonio(a))}</div>
+        </div>`;
+    });
+    document.getElementById('dash-weight-chart').innerHTML = weightHtml;
+}
+
+// ============================================
+// CARTEIRA
+// ============================================
+function renderCarteira(filter) {
+    let ativos = state.ativos;
+    if (filter !== 'all') ativos = ativos.filter(a=>a.tipo===filter);
+
+    // Legenda de oportunidades
+    let legendaHtml = `<div style="display:flex;gap:15px;margin-bottom:12px;flex-wrap:wrap;font-size:.8em;">
+        <span><span class="oport-badge oport-badge-preco">PRECO</span> Preco &lt; P.Medio + Peso &lt; Alvo</span>
+        <span><span class="oport-badge oport-badge-dy">DY</span> DY acima da media + Peso &lt; Alvo</span>
+        <span><span class="oport-badge oport-badge-dupla">DUPLA</span> Ambos os criterios</span>
+    </div>`;
+
+    let html = legendaHtml + '<table><thead><tr><th>Ticker</th><th>Tipo</th><th>Qtd</th><th>P.Medio</th><th>P.Atual</th><th>Valor</th><th>Ganho</th><th>Rentab.</th><th>DY API</th><th>DY Real 12m</th><th>Div/Ano</th><th>Peso Atual</th><th>Peso Alvo</th><th>Sinal</th><th>Acoes</th></tr></thead><tbody>';
+
+    ativos.forEach((a,i) => {
+        const val = getPatrimonio(a);
+        const ganho = getGanho(a);
+        const rentab = getRentab(a);
+        const divA = getDivAnual(a);
+        const peso = getPesoAtual(a);
+        const oport = getOportunidade(a);
+
+        const rowClass = oport==='dupla'?'oportunidade-dupla':oport==='preco'?'oportunidade-preco':oport==='dy'?'oportunidade-dy':'';
+        const sinalHtml = oport==='dupla'?'<span class="oport-badge oport-badge-dupla">DUPLA</span>':
+                          oport==='preco'?'<span class="oport-badge oport-badge-preco">PRECO</span>':
+                          oport==='dy'?'<span class="oport-badge oport-badge-dy">DY</span>':'<span style="color:var(--muted)">-</span>';
+
+        html += `<tr class="${rowClass}">
+            <td style="font-weight:700;color:var(--green)">${a.ticker}</td>
+            <td><span class="badge ${a.tipo==='Dividendos'?'badge-green':a.tipo==='FIIs'?'badge-gold':a.tipo==='Cripto'?'badge-red':a.tipo==='Caixa'?'badge-purple':'badge-blue'}">${a.tipo}</span></td>
+            <td>${typeof a.qtd==='number'&&a.qtd<1?a.qtd.toFixed(8):a.qtd}</td>
+            <td>${fmt(a.pm)}</td>
+            <td style="color:${a.preco<a.pm?'var(--green2)':'var(--text)'}">${fmt(a.preco)}</td>
+            <td>${fmt(val)}</td>
+            <td class="${ganho>=0?'positive':'negative'}">${fmt(ganho)}</td>
+            <td class="${rentab>=0?'positive':'negative'}">${fmtPct(rentab)}</td>
+            <td>${a.dy.toFixed(2)}%</td>
+            <td>${getDYRealForDisplay(a.ticker)}</td>
+            <td>${fmt(divA)}</td>
+            <td style="color:${peso<a.pesoAlvo?'var(--green2)':peso>a.pesoAlvo*1.2?'var(--orange)':'var(--text)'}">${peso.toFixed(2)}%</td>
+            <td>${a.pesoAlvo.toFixed(1)}%</td>
+            <td>${sinalHtml}</td>
+            <td>
+                <button class="btn btn-sm btn-primary" onclick="editAtivo(${state.ativos.indexOf(a)})">Ed</button>
+                <button class="btn btn-sm btn-danger" onclick="removeAtivo(${state.ativos.indexOf(a)})">X</button>
+            </td>
+        </tr>`;
+    });
+
+    const totalVal = ativos.reduce((s,a)=>s+getPatrimonio(a),0);
+    const totalGanho = ativos.reduce((s,a)=>s+getGanho(a),0);
+    const totalDiv = ativos.reduce((s,a)=>s+getDivAnual(a),0);
+    const oportunidades = ativos.filter(a=>getOportunidade(a)!=='').length;
+    html += `<tr style="background:#1e3a4f;font-weight:700;">
+        <td>TOTAL</td><td></td><td></td><td></td><td></td>
+        <td>${fmt(totalVal)}</td>
+        <td class="${totalGanho>=0?'positive':'negative'}">${fmt(totalGanho)}</td>
+        <td></td><td></td><td></td>
+        <td>${fmt(totalDiv)}</td>
+        <td>100%</td><td>100%</td><td style="color:var(--green2)">${oportunidades} oport.</td><td></td>
+    </tr>`;
+    html += '</tbody></table>';
+    document.getElementById('carteira-table').innerHTML = html;
+    reapplySort('carteira-table');
+}
+function filterCarteira(filter, btn) {
+    document.querySelectorAll('#carteira .tab-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    renderCarteira(filter);
+}
+
+// ============================================
+// DIVIDENDOS
+// ============================================
+let divHistoryFilterYear = 'all';
+
+function renderDividendos() {
+    const divAnualEst = state.ativos.reduce((s,a)=>s+getDivAnual(a),0);
+    const divMensalEst = divAnualEst/12;
+    const totalRecebido = state.totalDivRecebidos || DEFAULT_STATE.totalDivRecebidos || 0;
+    const divAnualData = state.divAnual || DEFAULT_STATE.divAnual || [];
+    const divMensalData = state.divMensal || DEFAULT_STATE.divMensal || [];
+    const divTickerData = state.divPorTicker || DEFAULT_STATE.divPorTicker || [];
+    const anoAtual = new Date().getFullYear().toString();
+    const recebidoAno = divAnualData.find(d=>d.y===anoAtual);
+    const mediaMensal12 = divMensalData.slice(-12).reduce((s,d)=>s+d.v,0)/12;
+    const anoMin = divAnualData.length > 0 ? divAnualData[0].y : anoAtual;
+    const anoMax = divAnualData.length > 0 ? divAnualData[divAnualData.length-1].y : anoAtual;
+
+    // Calcular total proventos futuros do cache
+    const today = new Date().toISOString().slice(0,10);
+    let totalFuturo = 0;
+    let countFuturo = 0;
+    Object.keys(cachedDividendsData).forEach(ticker => {
+        const divs = cachedDividendsData[ticker] || [];
+        const ativo = state.ativos.find(a => a.ticker === ticker);
+        const qtd = ativo ? ativo.qtd : 0;
+        divs.forEach(d => {
+            if (d.paymentDate && d.paymentDate > today && d.rate > 0 && qtd > 0) {
+                totalFuturo += Math.round(d.rate * qtd * 100) / 100;
+                countFuturo++;
+            }
+        });
+    });
+
+    // Stats - Recebido (real)
+    document.getElementById('div-stats-recebido').innerHTML = `
+        <div class="stat-card"><div class="value gold">${fmt(totalRecebido)}</div><div class="label">Total Recebido (${anoMin}-${anoMax})</div></div>
+        <div class="stat-card"><div class="value gold">${fmt(recebidoAno?recebidoAno.v:0)}</div><div class="label">Recebido em ${anoAtual}</div></div>
+        <div class="stat-card"><div class="value">${fmt(mediaMensal12)}</div><div class="label">Media Mensal (12m)</div></div>
+        <div class="stat-card"><div class="value">${divMensalData.length}</div><div class="label">Meses com Proventos</div></div>
+    `;
+
+    // Stats - Estimado + Futuro
+    document.getElementById('div-stats-estimado').innerHTML = `
+        <div class="stat-card"><div class="value gold">${fmt(divMensalEst)}</div><div class="label">Estimativa Mensal</div></div>
+        <div class="stat-card"><div class="value gold">${fmt(divAnualEst)}</div><div class="label">Estimativa Anual</div></div>
+        ${getDYRealStatsHTML()}
+        <div class="stat-card" style="border-left:3px solid var(--green)"><div class="value" style="color:var(--green2)">${totalFuturo > 0 ? fmt(totalFuturo) : '-'}</div><div class="label">Proventos Futuros (${countFuturo})</div></div>
+    `;
+
+    renderCalendarFromCache();
+
+    // Grafico Anual
+    let yearHtml = '';
+    const maxYear = Math.max(...divAnualData.map(d=>d.v));
+    divAnualData.forEach((d,i) => {
+        const pct = maxYear>0?(d.v/maxYear)*100:0;
+        const isCurrentYear = d.y === anoAtual;
+        yearHtml += `<div class="bar-row">
+            <div class="bar-label" style="color:${isCurrentYear?'var(--green2)':'var(--text)'};font-weight:${isCurrentYear?'700':'400'}">${d.y}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${isCurrentYear?'var(--green2)':'var(--gold)'}">${fmt(d.v)}</div></div>
+            <div class="bar-value" style="color:var(--gold);font-weight:${isCurrentYear?'700':'400'}">${fmt(d.v)}</div>
+        </div>`;
+    });
+    document.getElementById('div-yearly-chart').innerHTML = yearHtml;
+
+    // Grafico Mensal (ultimos 24 meses)
+    let monthHtml = '';
+    const last24 = divMensalData.slice(-24);
+    const maxMonth = Math.max(...last24.map(d=>d.v));
+    last24.forEach((d,i) => {
+        const pct = maxMonth>0?(d.v/maxMonth)*100:0;
+        monthHtml += `<div class="bar-row">
+            <div class="bar-label" style="color:var(--text);width:60px;font-size:.7em">${d.m}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${COLORS[i%COLORS.length]}">${d.v>=1000?'R$'+(d.v/1000).toFixed(1)+'k':fmt(d.v)}</div></div>
+            <div class="bar-value" style="color:var(--gold)">${fmt(d.v)}</div>
+        </div>`;
+    });
+    document.getElementById('div-monthly-chart').innerHTML = monthHtml;
+
+    // Total por Ticker (historico completo) - top 15
+    let tickerHtml = '';
+    const topTickers = divTickerData.slice(0,15);
+    const maxTicker = topTickers.length>0?topTickers[0].v:0;
+    topTickers.forEach((d,i) => {
+        const pct = maxTicker>0?(d.v/maxTicker)*100:0;
+        tickerHtml += `<div class="bar-row">
+            <div class="bar-label" style="color:var(--text)">${d.t}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${COLORS[i%COLORS.length]}">${fmt(d.v)}</div></div>
+            <div class="bar-value" style="color:var(--gold)">${fmt(d.v)}</div>
+        </div>`;
+    });
+    document.getElementById('div-ticker-chart').innerHTML = tickerHtml;
+
+    // Chart dividendos estimados por ativo
+    let chartHtml = '';
+    state.ativos.filter(a=>a.qtd>0&&a.dy>0).sort((a,b)=>getDivAnual(b)-getDivAnual(a)).forEach((a,i) => {
+        const d = getDivAnual(a);
+        const maxD = Math.max(...state.ativos.map(x=>getDivAnual(x)));
+        const pct = maxD>0?(d/maxD)*100:0;
+        chartHtml += `<div class="bar-row">
+            <div class="bar-label" style="color:var(--text)">${a.ticker}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${COLORS[i%COLORS.length]}">${a.dy.toFixed(1)}%</div></div>
+            <div class="bar-value" style="color:var(--gold)">${fmt(d)}/ano</div>
+        </div>`;
+    });
+    document.getElementById('div-chart').innerHTML = chartHtml;
+
+    // Filtro de historico por ano
+    renderDivHistoryFilter();
+    renderDivHistory();
+}
+
+function renderDivHistoryFilter() {
+    const years = new Set();
+    state.proventos.forEach(p => { if(p.data) years.add(p.data.slice(0,4)); });
+    const sortedYears = [...years].sort().reverse();
+
+    let tabsHtml = '<div class="div-filter-tabs">';
+    tabsHtml += `<span class="div-filter-tab ${divHistoryFilterYear==='all'?'active':''}" onclick="filterDivHistory('all')">Todos</span>`;
+    sortedYears.forEach(y => {
+        tabsHtml += `<span class="div-filter-tab ${divHistoryFilterYear===y?'active':''}" onclick="filterDivHistory('${y}')">${y}</span>`;
+    });
+    tabsHtml += '</div>';
+    const filterEl = document.getElementById('div-history-filter');
+    if (filterEl) filterEl.innerHTML = tabsHtml;
+}
+
+function filterDivHistory(year) {
+    divHistoryFilterYear = year;
+    renderDivHistoryFilter();
+    renderDivHistory();
+}
+
+function renderDivHistory() {
+    const filtered = divHistoryFilterYear === 'all'
+        ? state.proventos
+        : state.proventos.filter(p => p.data && p.data.startsWith(divHistoryFilterYear));
+
+    let hHtml = '<table><thead><tr><th>Data</th><th>Ticker</th><th>Tipo</th><th>Valor</th></tr></thead><tbody>';
+    if(filtered.length > 0) {
+        const totalFiltered = filtered.reduce((s,p) => s + (p.valor||0), 0);
+        [...filtered].sort((a,b)=>b.data.localeCompare(a.data)).forEach(p => {
+            hHtml += `<tr><td>${p.data}</td><td style="font-weight:700;color:var(--green)">${p.ticker}</td><td>${p.tipo}</td><td style="color:var(--gold)">${fmt(p.valor)}</td></tr>`;
+        });
+        hHtml += `<tr style="background:#1e3a4f;font-weight:700;"><td>TOTAL</td><td colspan="2">${filtered.length} proventos</td><td style="color:var(--gold)">${fmt(totalFiltered)}</td></tr>`;
+    } else {
+        hHtml += '<tr><td colspan="4" style="text-align:center;color:var(--muted)">Nenhum provento registrado' + (divHistoryFilterYear !== 'all' ? ' em ' + divHistoryFilterYear : '') + '. Use os botoes acima para importar.</td></tr>';
+    }
+    hHtml += '</tbody></table>';
+    document.getElementById('div-history').innerHTML = hHtml;
+}
+
+// ============================================
+// REBALANCEAMENTO
+// ============================================
+// Estado dos checkboxes de selecao do rebalanceamento
+const rebalSelected = {};
+
+function rebalSelectAll() {
+    state.ativos.filter(a=>a.pesoAlvo>0).forEach(a => { rebalSelected[a.ticker] = true; });
+    calcRebalance();
+}
+function rebalSelectNone() {
+    Object.keys(rebalSelected).forEach(k => { rebalSelected[k] = false; });
+    calcRebalance();
+}
+function toggleRebalAtivo(ticker) {
+    rebalSelected[ticker] = !rebalSelected[ticker];
+    calcRebalance();
+}
+
+function calcRebalance() {
+    const amount = parseFloat(document.getElementById('rebal-amount').value)||1500;
+    const totalPat = getTotalPatrimonio();
+    const total = totalPat + amount;
+    const ativos = state.ativos.filter(a=>a.pesoAlvo>0);
+
+    // Inicializar selecao na primeira vez (todos selecionados)
+    ativos.forEach(a => {
+        if (rebalSelected[a.ticker] === undefined) rebalSelected[a.ticker] = true;
+    });
+
+    const rows = ativos.map(a => {
+        const valAtual = getPatrimonio(a);
+        const pesoAtual = totalPat > 0 ? (valAtual / totalPat)*100 : 0;
+        const valIdeal = total * (a.pesoAlvo/100);
+        const diff = valIdeal - valAtual;
+        const selected = !!rebalSelected[a.ticker];
+        return { ...a, valAtual, pesoAtual, valIdeal, diff, selected };
+    }).sort((a,b)=>b.diff-a.diff);
+
+    // Distribuir aporte proporcionalmente pelo peso-alvo dos selecionados
+    const selecionados = rows.filter(r => r.selected);
+    const pesoTotalSel = selecionados.reduce((s, r) => s + r.pesoAlvo, 0);
+
+    selecionados.forEach(r => {
+        r.alloc = pesoTotalSel > 0 ? amount * (r.pesoAlvo / pesoTotalSel) : 0;
+    });
+
+    // Marcar alloc=0 nos nao selecionados
+    rows.filter(r => !r.selected).forEach(r => { r.alloc = 0; });
+
+    // Re-sort pela diferenca para exibicao
+    rows.sort((a,b)=>b.diff-a.diff);
+
+    const selectedCount = selecionados.length;
+
+    let html = '<table><thead><tr><th style="text-align:center;cursor:default;">Aportar</th><th>Ticker</th><th>Tipo</th><th>Rentab.</th><th>Peso Atual</th><th>Peso Alvo</th><th>Diferenca</th><th>Val. Ideal</th><th>Val. Atual</th><th>APORTAR</th><th>% do Aporte</th></tr></thead><tbody>';
+    rows.forEach(r => {
+        const diffPct = r.pesoAtual - r.pesoAlvo;
+        const rentab = getRentab(r);
+        const pctAporte = amount > 0 ? (r.alloc / amount) * 100 : 0;
+        const checked = r.selected ? 'checked' : '';
+        const rowOpacity = r.selected ? '1' : '0.4';
+        html += `<tr style="opacity:${rowOpacity};transition:opacity .2s;">
+            <td style="text-align:center;"><input type="checkbox" ${checked} onchange="toggleRebalAtivo('${r.ticker}')" style="cursor:pointer;width:16px;height:16px;accent-color:var(--green);"></td>
+            <td style="font-weight:700;color:var(--green)">${r.ticker}</td>
+            <td><span class="badge ${r.tipo==='Dividendos'?'badge-green':'badge-gold'}">${r.tipo}</span></td>
+            <td class="${rentab>=0?'positive':'negative'}">${fmtPct(rentab)}</td>
+            <td>${r.pesoAtual.toFixed(2)}%</td>
+            <td>${r.pesoAlvo.toFixed(1)}%</td>
+            <td class="${diffPct>=0?'negative':'positive'}">${diffPct>=0?'+':''}${diffPct.toFixed(2)}%</td>
+            <td>${fmt(r.valIdeal)}</td>
+            <td>${fmt(r.valAtual)}</td>
+            <td style="font-weight:700;color:${r.alloc>0?'var(--gold)':'var(--muted)'}">${r.alloc>0?fmt(r.alloc):'-'}</td>
+            <td style="font-weight:700;color:${pctAporte>0?'var(--green2)':'var(--muted)'}">${pctAporte>0?pctAporte.toFixed(1)+'%':'-'}</td>
+        </tr>`;
+    });
+
+    const totalAlloc = rows.reduce((s, r) => s + r.alloc, 0);
+    const ativosComAporte = rows.filter(r => r.alloc > 0).length;
+    html += `<tr style="background:#1e3a4f;font-weight:700;">
+        <td style="text-align:center;">${selectedCount}/${rows.length}</td>
+        <td>TOTAL</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+        <td style="color:var(--gold)">${fmt(totalAlloc)}</td>
+        <td style="color:var(--green2)">${amount>0?(totalAlloc/amount*100).toFixed(1)+'%':'-'}</td>
+    </tr>`;
+    html += '</tbody></table>';
+    html += `<p style="font-size:.85em;color:var(--muted);margin-top:10px;">Aporte de <span style="color:var(--gold);font-weight:700;">${fmt(amount)}</span> distribuido em <span style="color:var(--green2);font-weight:700;">${ativosComAporte}</span> ativo${ativosComAporte!==1?'s':''} de ${selectedCount} selecionado${selectedCount!==1?'s':''}.</p>`;
+    document.getElementById('rebal-table').innerHTML = html;
+    reapplySort('rebal-table');
+}
+
+// ============================================
+// SIMULADOR
+// ============================================
+function runSimulation() {
+    const pat = parseFloat(document.getElementById('sim-pat').value);
+    const aporte = parseFloat(document.getElementById('sim-aporte').value);
+    const aum = parseFloat(document.getElementById('sim-aum').value)/100;
+    const dy = parseFloat(document.getElementById('sim-dy').value)/100;
+    const val = parseFloat(document.getElementById('sim-val').value)/100;
+    const meta = parseFloat(document.getElementById('sim-meta').value);
+    const inj = parseFloat(document.getElementById('sim-inj').value);
+    const injAno = parseInt(document.getElementById('sim-inj-ano').value);
+    const anoAtual = new Date().getFullYear();
+
+    let p = pat;
+    let ap = aporte*12;
+    let metaAtingida = null;
+    let rows = [];
+
+    for (let i=0; i<30; i++) {
+        const ano = anoAtual + i;
+        const injection = (ano===injAno)?inj:0;
+        const divs = p * dy;
+        const valoriz = p * val;
+        p = p + ap + divs + valoriz + injection;
+        const rendaMensal = (p*dy)/12;
+        const apMensal = ap/12;
+
+        rows.push({ano, apMensal:apMensal.toFixed(0), apAnual:ap, injection, divs, valoriz, patrimonioFinal:p, rendaMensal});
+
+        if (!metaAtingida && rendaMensal >= meta) metaAtingida = ano;
+        ap *= (1+aum);
+    }
+
+    let html = `<div class="stats-grid" style="margin:20px 0">
+        <div class="stat-card"><div class="value gold">${metaAtingida||'25+ anos'}</div><div class="label">Ano que atinge ${fmt(meta)}/mes</div></div>
+        <div class="stat-card"><div class="value">${metaAtingida?(metaAtingida-anoAtual)+' anos':'---'}</div><div class="label">Anos ate a meta</div></div>
+        <div class="stat-card"><div class="value gold">${fmt(rows[rows.length-1].patrimonioFinal)}</div><div class="label">Patrimonio em ${anoAtual+29}</div></div>
+    </div>`;
+
+    html += '<div class="table-wrap"><table><thead><tr><th>Ano</th><th>Aporte/mes</th><th>Injecao</th><th>Dividendos</th><th>Valoriz.</th><th>Patrimonio</th><th>Renda/mes</th></tr></thead><tbody>';
+    rows.forEach(r => {
+        const isMeta = metaAtingida && r.ano === metaAtingida;
+        const isInj = r.injection > 0;
+        html += `<tr style="${isMeta?'background:#0a4a2a;':isInj?'background:#2a2a0a;border-left:3px solid var(--gold);':''}">
+            <td style="color:${isMeta?'var(--green2)':isInj?'var(--gold)':'var(--green)'};font-weight:700">${r.ano}</td>
+            <td>R$ ${r.apMensal}</td>
+            <td style="color:var(--gold);font-weight:${isInj?'700':'400'}">${isInj?fmt(r.injection):'-'}</td>
+            <td>${fmt(r.divs)}</td>
+            <td>${fmt(r.valoriz)}</td>
+            <td style="font-weight:700">${fmt(r.patrimonioFinal)}</td>
+            <td style="color:${r.rendaMensal>=meta?'var(--green2)':'var(--text)'};font-weight:${r.rendaMensal>=meta?'700':'400'}">${fmt(r.rendaMensal)}</td>
+        </tr>`;
+    });
+    html += '</tbody></table></div>';
+    document.getElementById('sim-result').innerHTML = html;
+}
+
+// ============================================
+// ADICIONAR / EDITAR ATIVO
+// ============================================
+let editingIndex = -1;
+
+function addAtivo() {
+    const ticker = document.getElementById('add-ticker').value.trim().toUpperCase();
+    if(!ticker) { document.getElementById('add-msg').innerHTML='<span style="color:var(--red)">Preencha o ticker!</span>'; return; }
+
+    const obj = {
+        ticker,
+        tipo: document.getElementById('add-tipo').value,
+        qtd: parseFloat(document.getElementById('add-qtd').value)||0,
+        pm: parseFloat(document.getElementById('add-pm').value)||0,
+        preco: parseFloat(document.getElementById('add-preco').value)||0,
+        dy: parseFloat(document.getElementById('add-dy').value)||0,
+        pesoAlvo: parseFloat(document.getElementById('add-peso-alvo').value)||0,
+        stop: parseFloat(document.getElementById('add-stop').value)||0,
+    };
+
+    if(editingIndex>=0) {
+        state.ativos[editingIndex] = obj;
+        state.historico.push({data:new Date().toISOString().slice(0,10), acao:'Editou', ticker, detalhes:`Qtd:${obj.qtd} PM:${obj.pm} Preco:${obj.preco}`});
+        editingIndex = -1;
+        document.getElementById('add-msg').innerHTML='<span style="color:var(--green)">Ativo atualizado!</span>';
+    } else {
+        const existing = state.ativos.findIndex(a=>a.ticker===ticker);
+        if(existing>=0) {
+            state.ativos[existing] = obj;
+            document.getElementById('add-msg').innerHTML='<span style="color:var(--gold)">Ativo existente atualizado!</span>';
+        } else {
+            state.ativos.push(obj);
+            document.getElementById('add-msg').innerHTML='<span style="color:var(--green)">Ativo adicionado!</span>';
+        }
+        state.historico.push({data:new Date().toISOString().slice(0,10), acao:'Adicionou', ticker, detalhes:`Qtd:${obj.qtd} PM:${fmt(obj.pm)}`});
+    }
+    if(state.deletedTickers && state.deletedTickers.includes(ticker)) {
+        state.deletedTickers = state.deletedTickers.filter(t => t !== ticker);
+    }
+    saveState();
+    clearForm();
+}
+
+function editAtivo(idx) {
+    const a = state.ativos[idx];
+    editingIndex = idx;
+    showPage('adicionar');
+    document.getElementById('add-ticker').value = a.ticker;
+    document.getElementById('add-tipo').value = a.tipo;
+    document.getElementById('add-qtd').value = a.qtd;
+    document.getElementById('add-pm').value = a.pm;
+    document.getElementById('add-preco').value = a.preco;
+    document.getElementById('add-dy').value = a.dy;
+    document.getElementById('add-peso-alvo').value = a.pesoAlvo;
+    document.getElementById('add-stop').value = a.stop;
+    document.getElementById('add-msg').innerHTML='<span style="color:var(--gold)">Editando: '+a.ticker+'</span>';
+}
+
+function removeAtivo(idx) {
+    if(confirm('Remover '+state.ativos[idx].ticker+'?')) {
+        const ticker = state.ativos[idx].ticker;
+        state.historico.push({data:new Date().toISOString().slice(0,10), acao:'Removeu', ticker: ticker, detalhes:''});
+        if(!state.deletedTickers) state.deletedTickers = [];
+        if(!state.deletedTickers.includes(ticker)) state.deletedTickers.push(ticker);
+        state.ativos.splice(idx,1);
+        saveState();
+        renderCarteira('all');
+    }
+}
+
+function clearForm() {
+    editingIndex = -1;
+    ['add-ticker','add-qtd','add-pm','add-preco','add-dy','add-peso-alvo','add-stop'].forEach(id=>document.getElementById(id).value='');
+}
+
+// ============================================
+// PROVENTOS
+// ============================================
+function openAddProvento() {
+    const sel = document.getElementById('prov-ticker');
+    sel.innerHTML = state.ativos.filter(a=>a.qtd>0).map(a=>`<option>${a.ticker}</option>`).join('');
+    document.getElementById('prov-data').value = new Date().toISOString().slice(0,10);
+    document.getElementById('prov-valor').value = '';
+    document.getElementById('modal-provento').classList.add('show');
+}
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+function addProvento() {
+    const p = {
+        ticker: document.getElementById('prov-ticker').value,
+        data: document.getElementById('prov-data').value,
+        valor: parseFloat(document.getElementById('prov-valor').value)||0,
+        tipo: document.getElementById('prov-tipo').value,
+    };
+    if(!p.ticker||!p.valor) return;
+    state.proventos.push(p);
+    state.historico.push({data:p.data, acao:'Provento', ticker:p.ticker, detalhes:`${p.tipo}: ${fmt(p.valor)}`});
+    updateDivAggregates();
+    saveState();
+    closeModal('modal-provento');
+    renderDividendos();
+}
+
+// ============================================
+// IMPORTAR PROVENTOS (Excel/CSV)
+// ============================================
+let importProventosData = [];
+
+function openImportProventos() {
+    importProventosData = [];
+    document.getElementById('import-prov-file').value = '';
+    document.getElementById('import-prov-filename').textContent = 'Nenhum arquivo selecionado';
+    document.getElementById('import-prov-preview').innerHTML = '';
+    document.getElementById('import-prov-summary').innerHTML = '';
+    document.getElementById('import-prov-btn').disabled = true;
+    document.getElementById('modal-import-prov').classList.add('show');
+}
+
+function previewImportProventos(input) {
+    const file = input.files[0];
+    if (!file) return;
+    document.getElementById('import-prov-filename').textContent = file.name;
+    const ext = file.name.split('.').pop().toLowerCase();
+
+    if (ext === 'csv') {
+        const reader = new FileReader();
+        reader.onload = function(e) { parseCSVProventos(e.target.result); };
+        reader.readAsText(file, 'UTF-8');
+    } else if (ext === 'xlsx' || ext === 'xls') {
+        const reader = new FileReader();
+        reader.onload = function(e) { parseXLSXProventos(e.target.result); };
+        reader.readAsArrayBuffer(file);
+    } else {
+        document.getElementById('import-prov-preview').innerHTML = '<p style="color:var(--red)">Formato nao suportado. Use .csv, .xlsx ou .xls</p>';
+    }
+}
+
+function parseCSVProventos(text) {
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 2) {
+        document.getElementById('import-prov-preview').innerHTML = '<p style="color:var(--red)">Arquivo vazio ou sem dados.</p>';
+        return;
+    }
+
+    // Detectar separador (; ou ,)
+    const header = lines[0];
+    const sep = header.includes(';') ? ';' : ',';
+    const cols = header.split(sep).map(c => c.trim().toLowerCase().replace(/['"]/g, ''));
+
+    const idxTicker = cols.findIndex(c => c.includes('ticker') || c.includes('ativo') || c.includes('papel') || c.includes('codigo'));
+    const idxData = cols.findIndex(c => c.includes('data') || c.includes('date'));
+    const idxValor = cols.findIndex(c => c.includes('valor') || c.includes('value') || c.includes('total') || c.includes('liquido'));
+    const idxTipo = cols.findIndex(c => c.includes('tipo') || c.includes('type') || c.includes('evento'));
+
+    if (idxTicker < 0 || idxValor < 0) {
+        document.getElementById('import-prov-preview').innerHTML = '<p style="color:var(--red)">Colunas obrigatorias nao encontradas. Necessario: Ticker e Valor.<br>Colunas detectadas: ' + cols.join(', ') + '</p>';
+        return;
+    }
+
+    const rows = [];
+    for (let i = 1; i < lines.length; i++) {
+        const parts = lines[i].split(sep).map(c => c.trim().replace(/^["']|["']$/g, ''));
+        const ticker = (parts[idxTicker] || '').toUpperCase().trim();
+        if (!ticker) continue;
+        const dataRaw = idxData >= 0 ? parts[idxData] || '' : '';
+        const data = normalizeDate(dataRaw);
+        let valorRaw = parts[idxValor] || '0';
+        valorRaw = valorRaw.replace(/R\$\s*/g, '').replace(/\./g, '').replace(',', '.').trim();
+        const valor = parseFloat(valorRaw) || 0;
+        const tipo = idxTipo >= 0 ? (parts[idxTipo] || 'Dividendo') : 'Dividendo';
+        if (valor > 0) rows.push({ ticker, data, valor, tipo });
+    }
+
+    importProventosData = rows;
+    renderImportPreview();
+}
+
+function parseXLSXProventos(buffer) {
+    // Parser XLSX simplificado usando SharedStrings e sheet1
+    try {
+        const data = new Uint8Array(buffer);
+        // Verificar se e ZIP (XLSX)
+        if (data[0] !== 0x50 || data[1] !== 0x4B) {
+            document.getElementById('import-prov-preview').innerHTML = '<p style="color:var(--red)">Arquivo Excel invalido. Tente salvar como CSV.</p>';
+            return;
+        }
+        // Para XLSX, precisamos de uma lib. Vamos usar abordagem inline leve.
+        parseXLSXWithJSZip(data);
+    } catch(e) {
+        document.getElementById('import-prov-preview').innerHTML = '<p style="color:var(--red)">Erro ao ler arquivo Excel. Tente salvar como CSV (.csv) e importar novamente.</p>';
+    }
+}
+
+async function parseXLSXWithJSZip(data) {
+    // Carregar JSZip dinamicamente se necessario
+    if (typeof JSZip === 'undefined') {
+        try {
+            await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+        } catch(e) {
+            document.getElementById('import-prov-preview').innerHTML = '<p style="color:var(--red)">Nao foi possivel carregar a biblioteca para ler Excel.<br>Por favor, salve seu arquivo como <strong>CSV</strong> e importe novamente.</p>';
+            return;
+        }
+    }
+
+    try {
+        const zip = await JSZip.loadAsync(data);
+
+        // Ler shared strings
+        const ssFile = zip.file('xl/sharedStrings.xml');
+        let sharedStrings = [];
+        if (ssFile) {
+            const ssXml = await ssFile.async('text');
+            const matches = ssXml.match(/<t[^>]*>([^<]*)<\/t>/g) || [];
+            sharedStrings = matches.map(m => m.replace(/<[^>]+>/g, ''));
+        }
+
+        // Ler sheet1
+        const sheetFile = zip.file('xl/worksheets/sheet1.xml');
+        if (!sheetFile) {
+            document.getElementById('import-prov-preview').innerHTML = '<p style="color:var(--red)">Nenhuma planilha encontrada no arquivo.</p>';
+            return;
+        }
+        const sheetXml = await sheetFile.async('text');
+
+        // Extrair linhas
+        const rowMatches = sheetXml.match(/<row[^>]*>([\s\S]*?)<\/row>/g) || [];
+        const tableData = [];
+
+        rowMatches.forEach(rowXml => {
+            const cells = rowXml.match(/<c[^>]*>[\s\S]*?<\/c>|<c[^\/]*\/>/g) || [];
+            const rowData = {};
+            cells.forEach(cellXml => {
+                const refMatch = cellXml.match(/r="([A-Z]+)\d+"/);
+                const typeMatch = cellXml.match(/t="([^"]+)"/);
+                const valMatch = cellXml.match(/<v>([^<]*)<\/v>/);
+                if (refMatch && valMatch) {
+                    const col = refMatch[1];
+                    let val = valMatch[1];
+                    if (typeMatch && typeMatch[1] === 's') {
+                        val = sharedStrings[parseInt(val)] || val;
+                    }
+                    rowData[col] = val;
+                }
+            });
+            tableData.push(rowData);
+        });
+
+        if (tableData.length < 2) {
+            document.getElementById('import-prov-preview').innerHTML = '<p style="color:var(--red)">Arquivo vazio ou sem dados suficientes.</p>';
+            return;
+        }
+
+        // Primeira linha = cabecalho
+        const headerRow = tableData[0];
+        const colLetters = Object.keys(headerRow);
+        const colMap = {};
+        colLetters.forEach(letter => {
+            const name = (headerRow[letter] || '').toLowerCase().trim();
+            if (name.includes('ticker') || name.includes('ativo') || name.includes('papel') || name.includes('codigo')) colMap.ticker = letter;
+            if (name.includes('data') || name.includes('date')) colMap.data = letter;
+            if (name.includes('valor') || name.includes('value') || name.includes('total') || name.includes('liquido')) colMap.valor = letter;
+            if (name.includes('tipo') || name.includes('type') || name.includes('evento')) colMap.tipo = letter;
+        });
+
+        if (!colMap.ticker || !colMap.valor) {
+            document.getElementById('import-prov-preview').innerHTML = '<p style="color:var(--red)">Colunas obrigatorias nao encontradas. Necessario: Ticker e Valor.<br>Colunas detectadas: ' + colLetters.map(l => headerRow[l]).join(', ') + '</p>';
+            return;
+        }
+
+        const rows = [];
+        for (let i = 1; i < tableData.length; i++) {
+            const r = tableData[i];
+            const ticker = (r[colMap.ticker] || '').toUpperCase().trim();
+            if (!ticker) continue;
+            const dataRaw = colMap.data ? (r[colMap.data] || '') : '';
+            const data = normalizeDate(dataRaw);
+            let valorRaw = (r[colMap.valor] || '0').toString().replace(/R\$\s*/g, '').replace(/\./g, '').replace(',', '.');
+            const valor = parseFloat(valorRaw) || 0;
+            const tipo = colMap.tipo ? (r[colMap.tipo] || 'Dividendo') : 'Dividendo';
+            if (valor > 0) rows.push({ ticker, data, valor, tipo });
+        }
+
+        importProventosData = rows;
+        renderImportPreview();
+    } catch(e) {
+        document.getElementById('import-prov-preview').innerHTML = '<p style="color:var(--red)">Erro ao processar arquivo Excel: ' + e.message + '<br>Tente salvar como CSV e importar novamente.</p>';
+    }
+}
+
+function loadScript(src) {
+    return new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+    });
+}
+
+function normalizeDate(raw) {
+    if (!raw) return new Date().toISOString().slice(0, 10);
+    // Se for numero (serial date Excel), converter
+    const num = parseFloat(raw);
+    if (!isNaN(num) && num > 30000 && num < 60000) {
+        const d = new Date((num - 25569) * 86400000);
+        return d.toISOString().slice(0, 10);
+    }
+    // Formato DD/MM/YYYY ou DD-MM-YYYY
+    const brMatch = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (brMatch) return brMatch[3] + '-' + brMatch[2].padStart(2, '0') + '-' + brMatch[1].padStart(2, '0');
+    // Formato YYYY-MM-DD
+    const isoMatch = raw.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+    if (isoMatch) return isoMatch[1] + '-' + isoMatch[2].padStart(2, '0') + '-' + isoMatch[3].padStart(2, '0');
+    return raw;
+}
+
+function renderImportPreview() {
+    const rows = importProventosData;
+    if (rows.length === 0) {
+        document.getElementById('import-prov-preview').innerHTML = '<p style="color:var(--red)">Nenhum provento valido encontrado no arquivo.</p>';
+        document.getElementById('import-prov-btn').disabled = true;
+        return;
+    }
+
+    const totalValor = rows.reduce((s, r) => s + r.valor, 0);
+    const tickers = [...new Set(rows.map(r => r.ticker))];
+
+    let html = '<table><thead><tr><th>#</th><th>Ticker</th><th>Data</th><th>Valor</th><th>Tipo</th></tr></thead><tbody>';
+    rows.forEach((r, i) => {
+        html += `<tr>
+            <td>${i + 1}</td>
+            <td style="font-weight:700;color:var(--green)">${r.ticker}</td>
+            <td>${r.data}</td>
+            <td style="color:var(--gold)">${fmt(r.valor)}</td>
+            <td>${r.tipo}</td>
+        </tr>`;
+    });
+    html += `<tr style="background:#1e3a4f;font-weight:700;">
+        <td></td><td>TOTAL</td><td>${rows.length} registros</td>
+        <td style="color:var(--gold)">${fmt(totalValor)}</td><td></td>
+    </tr>`;
+    html += '</tbody></table>';
+
+    document.getElementById('import-prov-preview').innerHTML = '<div class="table-wrap">' + html + '</div>';
+    document.getElementById('import-prov-summary').innerHTML = `
+        <span style="color:var(--green2);font-weight:700;">${rows.length}</span> proventos de
+        <span style="color:var(--green2);font-weight:700;">${tickers.length}</span> ativo${tickers.length !== 1 ? 's' : ''}
+        totalizando <span style="color:var(--gold);font-weight:700;">${fmt(totalValor)}</span>`;
+    document.getElementById('import-prov-btn').disabled = false;
+}
+
+function confirmImportProventos() {
+    if (importProventosData.length === 0) return;
+    let added = 0;
+    importProventosData.forEach(r => {
+        state.proventos.push({ ticker: r.ticker, data: r.data, valor: r.valor, tipo: r.tipo });
+        state.historico.push({ data: r.data, acao: 'Provento', ticker: r.ticker, detalhes: r.tipo + ': ' + fmt(r.valor) });
+        added++;
+    });
+    updateDivAggregates();
+    saveState();
+    closeModal('modal-import-prov');
+    renderDividendos();
+    showNotification(added + ' proventos importados com sucesso!', 'success');
+    importProventosData = [];
+}
+
+// ============================================
+// DIVIDENDOS VIA API (brapi.dev)
+// ============================================
+let cachedDividendsData = {};
+let cachedDividendsTimestamps = {};
+let importAPIProventosData = [];
+
+function formatDateBR(dateStr) {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return dateStr;
+    return parts[2] + '/' + parts[1] + '/' + parts[0];
+}
+
+async function fetchDividendsForTicker(ticker) {
+    const cacheAge = cachedDividendsTimestamps[ticker] ? (Date.now() - cachedDividendsTimestamps[ticker]) / 60000 : 999;
+    if (cacheAge < 15 && cachedDividendsData[ticker]) return cachedDividendsData[ticker];
+
+    try {
+        const resp = await fetch(brapiUrl(ticker + '?fundamental=true&dividends=true'));
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const data = await resp.json();
+        if (data.results && data.results[0]) {
+            const r = data.results[0];
+            const ativo = state.ativos.find(a => a.ticker === ticker);
+            if (ativo && r.regularMarketPrice) {
+                ativo.preco = r.regularMarketPrice;
+                if (r.dividendYield && r.dividendYield > 0) ativo.dy = r.dividendYield;
+            }
+            const divs = (r.cashDividends || []).map(d => ({
+                ticker: ticker,
+                type: d.label || 'DIVIDENDO',
+                rate: d.rate || 0,
+                paymentDate: (d.paymentDate || '').slice(0, 10),
+                lastDatePrior: (d.lastDatePrior || '').slice(0, 10),
+                approvedDate: (d.approvedDate || '').slice(0, 10),
+            }));
+            cachedDividendsData[ticker] = divs;
+            cachedDividendsTimestamps[ticker] = Date.now();
+            return divs;
+        }
+    } catch (e) {
+        console.warn('fetchDividends erro para ' + ticker + ':', e.message);
+    }
+    return [];
+}
+
+function openImportProventosAPI() {
+    importAPIProventosData = [];
+    document.getElementById('import-api-status').style.display = 'none';
+    document.getElementById('import-api-preview').innerHTML = '';
+    document.getElementById('import-api-summary').style.display = 'none';
+    document.getElementById('import-api-confirm-btn').style.display = 'none';
+    document.getElementById('import-api-fetch-btn').style.display = '';
+    document.getElementById('modal-import-api').classList.add('show');
+}
+
+async function fetchProventosAPI() {
+    const tickers = state.ativos
+        .filter(a => !SKIP_TICKERS.includes(a.ticker) && a.qtd > 0 && a.tipo !== 'Caixa' && a.tipo !== 'Cripto')
+        .map(a => a.ticker);
+    if (tickers.length === 0) {
+        showNotification('Nenhum ativo elegivel para buscar proventos', 'warning');
+        return;
+    }
+
+    document.getElementById('import-api-fetch-btn').style.display = 'none';
+    document.getElementById('import-api-status').style.display = 'block';
+    document.getElementById('import-api-preview').innerHTML = '';
+    document.getElementById('import-api-summary').style.display = 'none';
+    document.getElementById('import-api-confirm-btn').style.display = 'none';
+
+    const today = new Date().toISOString().slice(0, 10);
+    let allFound = [];
+
+    for (let i = 0; i < tickers.length; i++) {
+        const t = tickers[i];
+        const pct = Math.round(((i + 1) / tickers.length) * 100);
+        document.getElementById('import-api-status-text').textContent = 'Buscando ' + t + ' (' + (i + 1) + '/' + tickers.length + ')';
+        document.getElementById('import-api-bar').style.width = pct + '%';
+
+        const divs = await fetchDividendsForTicker(t);
+        const ativo = state.ativos.find(a => a.ticker === t);
+        const qtd = ativo ? ativo.qtd : 0;
+
+        divs.forEach(d => {
+            if (!d.paymentDate || d.paymentDate > today) return;
+            if (d.rate <= 0) return;
+
+            const valor = d.rate * qtd;
+            const tipo = mapDividendType(d.type);
+
+            const isDuplicate = state.proventos.some(p =>
+                p.ticker === t && p.data === d.paymentDate && p.tipo === tipo
+            );
+            if (isDuplicate) return;
+
+            allFound.push({
+                ticker: t,
+                data: d.paymentDate,
+                rate: d.rate,
+                qtd: qtd,
+                valor: Math.round(valor * 100) / 100,
+                tipo: tipo,
+                selected: true,
+            });
+        });
+
+        if (i < tickers.length - 1) await new Promise(r => setTimeout(r, 300));
+    }
+
+    document.getElementById('import-api-status').style.display = 'none';
+    importAPIProventosData = allFound;
+
+    if (allFound.length === 0) {
+        document.getElementById('import-api-preview').innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;">Nenhum provento novo encontrado. Todos ja foram importados ou nao ha dados disponiveis.</p>';
+        document.getElementById('import-api-fetch-btn').style.display = '';
+        return;
+    }
+
+    renderImportAPIPreview();
+    updateImportAPISummary();
+    document.getElementById('import-api-confirm-btn').style.display = '';
+}
+
+function mapDividendType(label) {
+    if (!label) return 'Dividendo';
+    const l = label.toUpperCase();
+    if (l.includes('JCP') || l.includes('JSCP') || l.includes('JUROS')) return 'JCP';
+    if (l.includes('RENDIMENTO')) return 'Rendimento';
+    if (l.includes('BONIFICACAO') || l.includes('BONIF')) return 'Bonificacao';
+    return 'Dividendo';
+}
+
+function renderImportAPIPreview() {
+    const rows = importAPIProventosData;
+    let html = '<div class="table-wrap"><table><thead><tr>';
+    html += '<th style="text-align:center;width:30px"><input type="checkbox" class="import-api-checkbox" onchange="toggleAllImportAPI(this.checked)" checked></th>';
+    html += '<th>Data</th><th>Ticker</th><th>Tipo</th><th>Rate</th><th>Qtd</th><th>Valor</th>';
+    html += '</tr></thead><tbody>';
+    rows.forEach((r, i) => {
+        html += `<tr style="opacity:${r.selected ? 1 : 0.4}">
+            <td style="text-align:center"><input type="checkbox" class="import-api-checkbox" ${r.selected ? 'checked' : ''} onchange="toggleImportAPIItem(${i})"></td>
+            <td>${formatDateBR(r.data)}</td>
+            <td style="font-weight:700;color:var(--green)">${r.ticker}</td>
+            <td>${r.tipo}</td>
+            <td>${r.rate.toFixed(4)}</td>
+            <td>${r.qtd}</td>
+            <td style="color:var(--gold)">${fmt(r.valor)}</td>
+        </tr>`;
+    });
+    html += '</tbody></table></div>';
+    document.getElementById('import-api-preview').innerHTML = html;
+}
+
+function toggleImportAPIItem(i) {
+    importAPIProventosData[i].selected = !importAPIProventosData[i].selected;
+    renderImportAPIPreview();
+    updateImportAPISummary();
+}
+
+function toggleAllImportAPI(checked) {
+    importAPIProventosData.forEach(r => r.selected = checked);
+    renderImportAPIPreview();
+    updateImportAPISummary();
+}
+
+function updateImportAPISummary() {
+    const selected = importAPIProventosData.filter(r => r.selected);
+    const total = selected.reduce((s, r) => s + r.valor, 0);
+    const tickers = [...new Set(selected.map(r => r.ticker))];
+    const el = document.getElementById('import-api-summary');
+    el.style.display = 'block';
+    el.innerHTML = `<span style="color:var(--green2);font-weight:700;">${selected.length}</span> de ${importAPIProventosData.length} selecionados |
+        <span style="color:var(--green2);font-weight:700;">${tickers.length}</span> ativo${tickers.length !== 1 ? 's' : ''} |
+        Total: <span style="color:var(--gold);font-weight:700;">${fmt(total)}</span>`;
+}
+
+async function confirmImportProventosAPI() {
+    const selected = importAPIProventosData.filter(r => r.selected);
+    if (selected.length === 0) return;
+
+    selected.forEach(r => {
+        state.proventos.push({ ticker: r.ticker, data: r.data, valor: r.valor, tipo: r.tipo });
+        state.historico.push({ data: r.data, acao: 'Provento (API)', ticker: r.ticker, detalhes: r.tipo + ': ' + fmt(r.valor) + ' (rate: ' + r.rate.toFixed(4) + ' x ' + r.qtd + ')' });
+    });
+
+    updateDivAggregates();
+    await saveState();
+    closeModal('modal-import-api');
+    renderDividendos();
+    showNotification(selected.length + ' proventos importados via API!', 'success');
+    importAPIProventosData = [];
+}
+
+// ============================================
+// DIVIDENDOS - AGREGADOS
+// ============================================
+function updateDivAggregates() {
+    const proventos = state.proventos;
+    if (proventos.length === 0) return;
+
+    const baseMensal = JSON.parse(JSON.stringify(DEFAULT_STATE.divMensal || []));
+    const baseAnual = JSON.parse(JSON.stringify(DEFAULT_STATE.divAnual || []));
+    const baseTicker = JSON.parse(JSON.stringify(DEFAULT_STATE.divPorTicker || []));
+    let baseTotal = DEFAULT_STATE.totalDivRecebidos || 0;
+
+    proventos.forEach(p => {
+        const ym = p.data ? p.data.slice(0, 7) : '';
+        const year = p.data ? p.data.slice(0, 4) : '';
+        const v = p.valor || 0;
+
+        if (ym) {
+            const existing = baseMensal.find(d => d.m === ym);
+            if (existing) existing.v += v;
+            else baseMensal.push({ m: ym, v: v });
+        }
+
+        if (year) {
+            const existing = baseAnual.find(d => d.y === year);
+            if (existing) existing.v += v;
+            else baseAnual.push({ y: year, v: v });
+        }
+
+        const tickerEntry = baseTicker.find(d => d.t === p.ticker);
+        if (tickerEntry) tickerEntry.v += v;
+        else baseTicker.push({ t: p.ticker, v: v });
+
+        baseTotal += v;
+    });
+
+    baseMensal.sort((a, b) => a.m.localeCompare(b.m));
+    baseAnual.sort((a, b) => a.y.localeCompare(b.y));
+    baseTicker.sort((a, b) => b.v - a.v);
+
+    state.divMensal = baseMensal;
+    state.divAnual = baseAnual;
+    state.divPorTicker = baseTicker;
+    state.totalDivRecebidos = Math.round(baseTotal * 100) / 100;
+}
+
+// ============================================
+// DY REAL (ultimos 12 meses do cache)
+// ============================================
+function calcDYReal(ticker) {
+    const divs = cachedDividendsData[ticker];
+    if (!divs || divs.length === 0) return null;
+    const ativo = state.ativos.find(a => a.ticker === ticker);
+    if (!ativo || !ativo.preco || ativo.preco <= 0) return null;
+
+    const now = new Date();
+    const oneYearAgo = new Date(now);
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    const cutoff = oneYearAgo.toISOString().slice(0, 10);
+    const today = now.toISOString().slice(0, 10);
+
+    let somaRates = 0;
+    divs.forEach(d => {
+        if (d.paymentDate >= cutoff && d.paymentDate <= today && d.rate > 0) {
+            somaRates += d.rate;
+        }
+    });
+
+    if (somaRates <= 0) return null;
+    return (somaRates / ativo.preco) * 100;
+}
+
+function getDYRealForDisplay(ticker) {
+    const dy = calcDYReal(ticker);
+    if (dy === null) return '<span style="color:var(--muted)">-</span>';
+    return '<span style="color:var(--green2)">' + dy.toFixed(2) + '%</span>';
+}
+
+function getDYRealStatsHTML() {
+    let somaDY = 0;
+    let somaPat = 0;
+    let count = 0;
+
+    state.ativos.forEach(a => {
+        const dy = calcDYReal(a.ticker);
+        if (dy !== null) {
+            const pat = getPatrimonio(a);
+            somaDY += dy * pat;
+            somaPat += pat;
+            count++;
+        }
+    });
+
+    if (count === 0 || somaPat <= 0) return '';
+
+    const dyMedioPond = somaDY / somaPat;
+    return `<div class="stat-card"><div class="value" style="color:var(--green2)">${dyMedioPond.toFixed(2)}%</div><div class="label">DY Real Medio 12m (${count} ativos)</div></div>`;
+}
+
+// ============================================
+// CALENDARIO DE DIVIDENDOS
+// ============================================
+function renderCalendarFromCache() {
+    const section = document.getElementById('div-calendar-section');
+    if (!section) return;
+
+    const tickers = Object.keys(cachedDividendsData);
+    if (tickers.length === 0) {
+        const summaryEl = document.getElementById('div-calendar-summary');
+        if (summaryEl) summaryEl.innerHTML = '<div class="calendar-empty">Aguardando dados da API... Os proventos futuros aparecerao aqui apos a atualizacao de cotacoes.</div>';
+        document.getElementById('div-calendar-alerts').innerHTML = '';
+        document.getElementById('div-calendar-timeline').innerHTML = '';
+        return;
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    let upcoming = [];
+
+    tickers.forEach(ticker => {
+        const divs = cachedDividendsData[ticker] || [];
+        const ativo = state.ativos.find(a => a.ticker === ticker);
+        const qtd = ativo ? ativo.qtd : 0;
+
+        divs.forEach(d => {
+            const payDate = d.paymentDate;
+            const exDate = d.lastDatePrior;
+            if (payDate && payDate > today) {
+                upcoming.push({
+                    ticker: ticker,
+                    paymentDate: payDate,
+                    exDate: exDate,
+                    type: mapDividendType(d.type),
+                    rate: d.rate,
+                    valorEst: Math.round(d.rate * qtd * 100) / 100,
+                });
+            }
+        });
+    });
+
+    if (upcoming.length === 0) {
+        const summaryEl = document.getElementById('div-calendar-summary');
+        if (summaryEl) summaryEl.innerHTML = '<div class="calendar-empty">Nenhum provento futuro identificado pela API no momento.</div>';
+        document.getElementById('div-calendar-alerts').innerHTML = '';
+        document.getElementById('div-calendar-timeline').innerHTML = '';
+        return;
+    }
+
+    upcoming.sort((a, b) => a.paymentDate.localeCompare(b.paymentDate));
+
+    renderCalendar(upcoming);
+}
+
+function renderCalendar(upcoming) {
+    const today = new Date();
+    const in7days = new Date(today);
+    in7days.setDate(in7days.getDate() + 7);
+    const in7daysStr = in7days.toISOString().slice(0, 10);
+    const todayStr = today.toISOString().slice(0, 10);
+
+    // Summary cards
+    const totalFuturo = upcoming.reduce((s, u) => s + u.valorEst, 0);
+    const in30days = new Date(today); in30days.setDate(in30days.getDate() + 30);
+    const in30daysStr = in30days.toISOString().slice(0, 10);
+    const in90days = new Date(today); in90days.setDate(in90days.getDate() + 90);
+    const in90daysStr = in90days.toISOString().slice(0, 10);
+    const total30d = upcoming.filter(u => u.paymentDate <= in30daysStr).reduce((s,u) => s + u.valorEst, 0);
+    const total90d = upcoming.filter(u => u.paymentDate <= in90daysStr).reduce((s,u) => s + u.valorEst, 0);
+    const tickersFuturo = [...new Set(upcoming.map(u => u.ticker))].length;
+
+    const summaryEl = document.getElementById('div-calendar-summary');
+    if (summaryEl) {
+        summaryEl.innerHTML = `<div class="calendar-summary">
+            <div class="calendar-summary-card"><div class="cs-value">${fmt(total30d)}</div><div class="cs-label">Proximos 30 dias</div></div>
+            <div class="calendar-summary-card"><div class="cs-value">${fmt(total90d)}</div><div class="cs-label">Proximos 90 dias</div></div>
+            <div class="calendar-summary-card"><div class="cs-value">${fmt(totalFuturo)}</div><div class="cs-label">Total previsto (${upcoming.length} proventos)</div></div>
+            <div class="calendar-summary-card"><div class="cs-value">${tickersFuturo}</div><div class="cs-label">Ativos com proventos</div></div>
+        </div>`;
+    }
+
+    // Alertas data-com
+    let alertsHtml = '';
+    const urgentExDates = upcoming.filter(u => u.exDate && u.exDate >= todayStr && u.exDate <= in7daysStr);
+    urgentExDates.forEach(u => {
+        const daysLeft = Math.ceil((new Date(u.exDate) - today) / 86400000);
+        if (daysLeft <= 3) {
+            alertsHtml += `<div class="calendar-alert alert-red">Data-com de ${u.ticker} em ${formatDateBR(u.exDate)} (${daysLeft === 0 ? 'HOJE' : daysLeft + ' dia' + (daysLeft > 1 ? 's' : '')}!) — ${u.type} R$${u.rate.toFixed(4)}/acao</div>`;
+        } else {
+            alertsHtml += `<div class="calendar-alert alert-orange">Data-com de ${u.ticker} em ${formatDateBR(u.exDate)} (${daysLeft} dias) — ${u.type} R$${u.rate.toFixed(4)}/acao</div>`;
+        }
+    });
+    document.getElementById('div-calendar-alerts').innerHTML = alertsHtml;
+
+    // Timeline agrupada por mes
+    let timelineHtml = '';
+    const in14days = new Date(today);
+    in14days.setDate(in14days.getDate() + 14);
+    const in14daysStr = in14days.toISOString().slice(0, 10);
+    const months = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+    let currentMonth = '';
+
+    upcoming.slice(0, 30).forEach(u => {
+        const ym = u.paymentDate.slice(0, 7);
+        if (ym !== currentMonth) {
+            currentMonth = ym;
+            const [y, m] = ym.split('-');
+            const monthTotal = upcoming.filter(x => x.paymentDate.startsWith(ym)).reduce((s,x) => s + x.valorEst, 0);
+            timelineHtml += `<div class="calendar-month-header">${months[parseInt(m)-1]} ${y} — ${fmt(monthTotal)}</div>`;
+        }
+
+        const dPay = new Date(u.paymentDate + 'T12:00:00');
+        const dayNum = dPay.getDate().toString().padStart(2, '0');
+        const monthStr = months[dPay.getMonth()];
+        const urgency = u.paymentDate <= in7daysStr ? 'urgent' : u.paymentDate <= in14daysStr ? 'soon' : 'normal';
+
+        let detailParts = [u.type];
+        if (u.exDate) detailParts.push('Data-com: ' + formatDateBR(u.exDate));
+        detailParts.push('Rate: R$' + u.rate.toFixed(4));
+
+        timelineHtml += `<div class="calendar-item ${urgency}">
+            <div class="calendar-date"><div class="day">${dayNum}</div><div class="month">${monthStr}</div></div>
+            <div class="calendar-info"><div class="ticker">${u.ticker}</div><div class="details">${detailParts.join(' | ')}</div></div>
+            <div class="calendar-value">${u.valorEst > 0 ? fmt(u.valorEst) : '-'}</div>
+        </div>`;
+    });
+    document.getElementById('div-calendar-timeline').innerHTML = timelineHtml;
+}
+
+// ============================================
+// FETCH DIVIDENDS BACKGROUND
+// ============================================
+async function fetchDividendsDataBackground() {
+    const tickers = state.ativos
+        .filter(a => !SKIP_TICKERS.includes(a.ticker) && a.qtd > 0 && a.tipo !== 'Caixa' && a.tipo !== 'Cripto')
+        .map(a => a.ticker);
+    if (tickers.length === 0) return;
+
+    for (let i = 0; i < tickers.length; i++) {
+        await fetchDividendsForTicker(tickers[i]);
+        if (i < tickers.length - 1) await new Promise(r => setTimeout(r, 300));
+    }
+
+    // Auto-importar proventos novos encontrados
+    const today = new Date().toISOString().slice(0, 10);
+    let imported = 0;
+    tickers.forEach(t => {
+        const divs = cachedDividendsData[t] || [];
+        const ativo = state.ativos.find(a => a.ticker === t);
+        const qtd = ativo ? ativo.qtd : 0;
+        if (qtd <= 0) return;
+
+        divs.forEach(d => {
+            if (!d.paymentDate || d.paymentDate > today) return;
+            if (d.rate <= 0) return;
+            const tipo = mapDividendType(d.type);
+            const isDuplicate = state.proventos.some(p =>
+                p.ticker === t && p.data === d.paymentDate && p.tipo === tipo
+            );
+            if (isDuplicate) return;
+            const valor = Math.round(d.rate * qtd * 100) / 100;
+            state.proventos.push({ ticker: t, data: d.paymentDate, valor: valor, tipo: tipo });
+            state.historico.push({ data: d.paymentDate, acao: 'Provento (Auto)', ticker: t, detalhes: tipo + ': ' + fmt(valor) + ' (rate: ' + d.rate.toFixed(4) + ' x ' + qtd + ')' });
+            imported++;
+        });
+    });
+
+    if (imported > 0) {
+        updateDivAggregates();
+        await saveState();
+        showNotification(imported + ' proventos importados automaticamente!', 'success');
+    }
+
+    const activePage = document.querySelector('.page.active');
+    if (activePage) {
+        if (activePage.id === 'dividendos') renderDividendos();
+        if (activePage.id === 'dashboard') renderDashboard();
+        if (activePage.id === 'carteira') {
+            const activeTab = document.querySelector('#carteira .tab-btn.active');
+            const filter = activeTab ? (activeTab.textContent.trim() === 'Todos' ? 'all' : activeTab.getAttribute('onclick').match(/'([^']+)'/)?.[1] || 'all') : 'all';
+            renderCarteira(filter);
+        }
+    }
+}
+
+// ============================================
+// HISTORICO
+// ============================================
+function renderHistorico() {
+    let html = '<table><thead><tr><th>Data</th><th>Acao</th><th>Ticker</th><th>Detalhes</th></tr></thead><tbody>';
+    [...state.historico].reverse().forEach(h => {
+        html += `<tr><td>${h.data}</td><td>${h.acao}</td><td style="color:var(--green);font-weight:700">${h.ticker}</td><td>${h.detalhes}</td></tr>`;
+    });
+    if(state.historico.length===0) html += '<tr><td colspan="4" style="text-align:center;color:var(--muted)">Nenhuma operacao registrada</td></tr>';
+    html += '</tbody></table>';
+    document.getElementById('hist-table').innerHTML = html;
+    reapplySort('hist-table');
+}
+
+// ============================================
+// EXPORT CSV
+// ============================================
+function exportData() {
+    let csv = 'Ticker,Tipo,Qtd,PM,Preco,Valor,Ganho,Rentab,DY,DivAnual,PesoAtual,PesoAlvo\n';
+    state.ativos.forEach(a => {
+        csv += `${a.ticker},${a.tipo},${a.qtd},${a.pm},${a.preco},${getPatrimonio(a).toFixed(2)},${getGanho(a).toFixed(2)},${getRentab(a).toFixed(2)}%,${a.dy}%,${getDivAnual(a).toFixed(2)},${getPesoAtual(a).toFixed(2)}%,${a.pesoAlvo}%\n`;
+    });
+    const blob = new Blob([csv], {type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'carteira_'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+    showNotification('CSV exportado com sucesso!');
+}
+
+// ============================================
+// BACKUP / RESTAURAR JSON
+// ============================================
+function exportBackupJSON() {
+    if (!sessionCryptoKey && localStorage.getItem(CRYPTO_STORAGE_KEY)) {
+        showNotification('Faca login primeiro para exportar o backup.', 'warning');
+        return;
+    }
+    const backup = {
+        version: 2,
+        exportDate: new Date().toISOString(),
+        data: state
+    };
+    const json = JSON.stringify(backup, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'gestor_carteira_backup_' + new Date().toISOString().slice(0, 10) + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    showNotification('Backup exportado (dados em texto). Guarde em local seguro!', 'success');
+}
+
+function restoreBackupJSON(input) {
+    const file = input.files[0];
+    if (!file) return;
+    input.value = '';
+
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+        try {
+            const parsed = JSON.parse(e.target.result);
+            const data = parsed.data || parsed;
+
+            if (!data.ativos || !Array.isArray(data.ativos)) {
+                showNotification('Arquivo invalido: nao contem dados de carteira.', 'error');
+                return;
+            }
+
+            const qtdAtivos = data.ativos.length;
+            const qtdProventos = (data.proventos || []).length;
+            const qtdSnapshots = (data.snapshots || []).length;
+            const exportDate = parsed.exportDate ? ' (backup de ' + parsed.exportDate.slice(0, 10) + ')' : '';
+
+            if (!confirm(
+                'Restaurar backup' + exportDate + '?\n\n' +
+                'Conteudo do backup:\n' +
+                '- ' + qtdAtivos + ' ativos\n' +
+                '- ' + qtdProventos + ' proventos\n' +
+                '- ' + qtdSnapshots + ' snapshots\n\n' +
+                'ATENCAO: Isso substituira TODOS os dados atuais!'
+            )) return;
+
+            state = data;
+            if (!state.proventos) state.proventos = [];
+            if (!state.historico) state.historico = [];
+            if (!state.snapshots) state.snapshots = [];
+            if (!state.divMensal) state.divMensal = DEFAULT_STATE.divMensal;
+            if (!state.divAnual) state.divAnual = DEFAULT_STATE.divAnual;
+            if (!state.divPorTicker) state.divPorTicker = DEFAULT_STATE.divPorTicker;
+            if (!state.totalDivRecebidos) state.totalDivRecebidos = DEFAULT_STATE.totalDivRecebidos;
+
+            await saveState();
+            showPage('dashboard');
+            showNotification(qtdAtivos + ' ativos restaurados com sucesso!', 'success');
+        } catch (err) {
+            showNotification('Erro ao ler arquivo: ' + err.message, 'error');
+        }
+    };
+    reader.readAsText(file, 'UTF-8');
+}
+
+function showNotification(msg, type) {
+    const colors = {success:'var(--green)',error:'var(--red)',warning:'var(--gold)',info:'#4fc3f7'};
+    const bg = colors[type||'success'];
+    const n = document.createElement('div');
+    n.textContent = msg;
+    n.style.cssText = 'position:fixed;bottom:20px;right:20px;background:'+bg+';color:var(--bg);padding:12px 24px;border-radius:8px;font-weight:600;z-index:200;box-shadow:0 4px 12px rgba(0,0,0,.4);transition:opacity .3s';
+    document.body.appendChild(n);
+    setTimeout(()=>{ n.style.opacity='0'; setTimeout(()=>n.remove(),300); }, 3000);
+}
+
+// ============================================
+// ATUALIZAR COTACOES (brapi.dev)
+// ============================================
+const SKIP_TICKERS = ['CAIXA','IPCA+2065','Tesouro'];
+const BRAPI_BASE = 'https://brapi.dev/api/quote/';
+const BRAPI_TOKEN = '4cMYPwAMdbQeu9RY4Hmujx';
+
+function brapiUrl(path) {
+    const sep = path.includes('?') ? '&' : '?';
+    return BRAPI_BASE + path + (BRAPI_TOKEN ? sep + 'token=' + BRAPI_TOKEN : '');
+}
+
+async function updateCotacoes() {
+    // Nao atualizar se app esta bloqueado (nao fez login ainda)
+    if (document.body.classList.contains('app-locked')) return;
+
+    const tickers = state.ativos
+        .filter(a => !SKIP_TICKERS.includes(a.ticker) && a.qtd > 0)
+        .map(a => a.ticker);
+
+    if(tickers.length === 0) { showNotification('Nenhum ativo para atualizar','warning'); return; }
+
+    showNotification('Atualizando cotacoes...','info');
+
+    // Separar tickers normais (B3) de crypto
+    const b3Tickers = tickers.filter(t => t !== 'BTC');
+    const hasBTC = tickers.includes('BTC');
+
+    let updated = 0;
+    let errors = [];
+
+    // Atualizar tickers B3 (ações, FIIs, ETFs, Tesouro)
+    if(b3Tickers.length > 0) {
+        try {
+            const resp = await fetch(brapiUrl(b3Tickers.join(',') + '?fundamental=true'));
+            if(!resp.ok) throw new Error('HTTP ' + resp.status);
+            const data = await resp.json();
+            if(data.results) {
+                data.results.forEach(r => {
+                    const ativo = state.ativos.find(a => a.ticker === r.symbol);
+                    if(ativo && r.regularMarketPrice) {
+                        ativo.preco = r.regularMarketPrice;
+                        if(r.dividendYield && r.dividendYield > 0) ativo.dy = r.dividendYield;
+                        updated++;
+                    }
+                });
+            }
+        } catch(e) {
+            errors.push('B3: ' + e.message);
+        }
+    }
+
+    // Atualizar BTC (CoinGecko primario + Binance fallback)
+    if(hasBTC) {
+        let btcPrice = null;
+        try {
+            const resp = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=brl');
+            if(resp.ok) {
+                const data = await resp.json();
+                if(data.bitcoin && data.bitcoin.brl > 50000) btcPrice = data.bitcoin.brl;
+            }
+        } catch(e) {}
+        if(!btcPrice) {
+            try {
+                const resp = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCBRL');
+                if(resp.ok) {
+                    const data = await resp.json();
+                    const price = parseFloat(data.price);
+                    if(price > 50000) btcPrice = price;
+                }
+            } catch(e) {}
+        }
+        if(btcPrice) {
+            const btc = state.ativos.find(a => a.ticker === 'BTC');
+            if(btc) { btc.preco = btcPrice; updated++; }
+        } else {
+            errors.push('BTC: nenhuma fonte retornou preco valido');
+        }
+    }
+
+    await saveState();
+    await recordSnapshot();
+
+    // Atualizar timestamp
+    const now = new Date();
+    localStorage.setItem('gestorCarteira_lastUpdate', now.toLocaleString('pt-BR'));
+    localStorage.setItem('gestorCarteira_lastUpdateTs', now.getTime().toString());
+    updateLastUpdateDisplay();
+
+    // Re-renderizar pagina atual
+    const activePage = document.querySelector('.page.active');
+    if(activePage) renderPage(activePage.id);
+
+    if(errors.length > 0) {
+        showNotification(updated + ' atualizados, erros: ' + errors.join('; '), 'warning');
+    } else {
+        showNotification(updated + ' cotacoes atualizadas!', 'success');
+    }
+
+    // Auto-sync apos atualizar cotacoes
+    if (googleAccessToken && syncSheetId) {
+        syncToSheets().catch(() => {});
+    }
+
+    // Fetch dividendos em background para calendario e DY Real
+    setTimeout(() => fetchDividendsDataBackground(), 1000);
+}
+
+function updateLastUpdateDisplay() {
+    const el = document.getElementById('last-update');
+    const last = localStorage.getItem('gestorCarteira_lastUpdate');
+    if(el) el.textContent = last ? 'Ultima atualizacao: ' + last : 'Cotacoes nao atualizadas';
+}
+
+// ============================================
+// RESET
+// ============================================
+async function resetToDefault() {
+    if(confirm('Restaurar dados originais da planilha? Isso apagara todas as alteracoes.')) {
+        localStorage.removeItem('gestorCarteira_v2');
+        localStorage.removeItem(CRYPTO_STORAGE_KEY);
+        sessionCryptoKey = null;
+        sessionSalt = null;
+        state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+        await saveState();
+        showPage('dashboard');
+        showNotification('Dados restaurados para o padrao!','success');
+    }
+}
+
+// ============================================
+// SNAPSHOTS & EVOLUCAO
+// ============================================
+async function recordSnapshot() {
+    const today = new Date().toISOString().slice(0, 10);
+    const totalPat = getTotalPatrimonio();
+    const totalInv = getTotalInvestido();
+    const ganho = totalPat - totalInv;
+    const rentab = totalInv > 0 ? ((totalPat / totalInv) - 1) * 100 : 0;
+    const divAnualEst = state.ativos.reduce((s, a) => s + getDivAnual(a), 0);
+    const divMensalEst = divAnualEst / 12;
+
+    const typeMap = {Dividendos:'D', FIIs:'F', Valor:'V', Cripto:'C', Caixa:'X'};
+    const tipos = {};
+    state.ativos.forEach(a => {
+        if (a.qtd > 0) {
+            const key = typeMap[a.tipo] || a.tipo.charAt(0);
+            tipos[key] = Math.round(((tipos[key] || 0) + getPatrimonio(a)) * 100) / 100;
+        }
+    });
+
+    const assets = {};
+    state.ativos.forEach(a => {
+        if (a.qtd > 0) assets[a.ticker] = Math.round(getPatrimonio(a) * 100) / 100;
+    });
+
+    const snapshot = {
+        d: today,
+        p: Math.round(totalPat * 100) / 100,
+        i: Math.round(totalInv * 100) / 100,
+        g: Math.round(ganho * 100) / 100,
+        r: Math.round(rentab * 100) / 100,
+        dm: Math.round(divMensalEst * 100) / 100,
+        t: tipos,
+        a: assets
+    };
+
+    const idx = state.snapshots.findIndex(s => s.d === today);
+    if (idx >= 0) {
+        state.snapshots[idx] = snapshot;
+    } else {
+        state.snapshots.push(snapshot);
+        state.snapshots.sort((a, b) => a.d.localeCompare(b.d));
+    }
+
+    pruneSnapshots();
+    await saveState();
+}
+
+function pruneSnapshots() {
+    const now = new Date();
+    const d90 = new Date(now - 90 * 86400000).toISOString().slice(0, 10);
+    const d365 = new Date(now - 365 * 86400000).toISOString().slice(0, 10);
+
+    const recent = state.snapshots.filter(s => s.d >= d90);
+    const medium = state.snapshots.filter(s => s.d < d90 && s.d >= d365);
+    const old = state.snapshots.filter(s => s.d < d365);
+
+    const weeklyMedium = [];
+    const seenWeeks = new Set();
+    medium.forEach(s => {
+        const weekKey = s.d.slice(0, 7);
+        const day = parseInt(s.d.slice(8, 10));
+        const wk = weekKey + '-W' + Math.ceil(day / 7);
+        if (!seenWeeks.has(wk)) { seenWeeks.add(wk); weeklyMedium.push(s); }
+    });
+
+    const monthlyOld = [];
+    const seenMonths = new Set();
+    old.forEach(s => {
+        const mk = s.d.slice(0, 7);
+        if (!seenMonths.has(mk)) { seenMonths.add(mk); monthlyOld.push(s); }
+    });
+
+    state.snapshots = [...monthlyOld, ...weeklyMedium, ...recent];
+}
+
+function drawLineChart(canvasId, datasets, options) {
+    options = options || {};
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+    const W = rect.width;
+    const H = rect.height;
+
+    const margin = { top: 25, right: 20, bottom: 40, left: 85 };
+    const cW = W - margin.left - margin.right;
+    const cH = H - margin.top - margin.bottom;
+
+    ctx.clearRect(0, 0, W, H);
+
+    const labels = options.labels || [];
+    if (labels.length < 1) return;
+
+    // Caso especial: apenas 1 ponto
+    if (labels.length === 1) {
+        ctx.fillStyle = '#888';
+        ctx.font = '13px Segoe UI';
+        ctx.textAlign = 'center';
+        let yPos = H / 2 - 10;
+        datasets.forEach((ds, di) => {
+            ctx.fillStyle = ds.color || '#00d4aa';
+            const val = options.formatY ? options.formatY(ds.data[0]) : ds.data[0].toFixed(2);
+            const label = ds.label ? ds.label + ': ' : '';
+            ctx.fillText(label + val + ' (' + labels[0] + ')', W / 2, yPos);
+            yPos += 22;
+        });
+        ctx.fillStyle = '#555';
+        ctx.font = '11px Segoe UI';
+        ctx.fillText('Mais dados serao coletados automaticamente.', W / 2, yPos + 10);
+        return;
+    }
+
+    let minVal = Infinity, maxVal = -Infinity;
+    datasets.forEach(ds => {
+        ds.data.forEach(v => {
+            if (v < minVal) minVal = v;
+            if (v > maxVal) maxVal = v;
+        });
+    });
+
+    const range = maxVal - minVal || 1;
+    minVal -= range * 0.05;
+    maxVal += range * 0.05;
+    if (options.minZero) minVal = Math.min(0, minVal);
+
+    // Grid e eixo Y
+    ctx.strokeStyle = '#1e3a4f';
+    ctx.lineWidth = 1;
+    ctx.font = '11px Segoe UI';
+    ctx.textAlign = 'right';
+    const ySteps = 5;
+    for (let i = 0; i <= ySteps; i++) {
+        const y = margin.top + (cH / ySteps) * i;
+        const val = maxVal - ((maxVal - minVal) / ySteps) * i;
+        ctx.fillStyle = '#555';
+        ctx.beginPath();
+        ctx.moveTo(margin.left, y);
+        ctx.lineTo(W - margin.right, y);
+        ctx.stroke();
+        ctx.fillStyle = '#888';
+        const lbl = options.formatY ? options.formatY(val) : val.toFixed(0);
+        ctx.fillText(lbl, margin.left - 8, y + 4);
+    }
+
+    // Eixo X
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#888';
+    const xLabelCount = Math.min(labels.length, 12);
+    const xStep = Math.max(1, Math.floor((labels.length - 1) / (xLabelCount - 1)));
+    for (let i = 0; i < labels.length; i += xStep) {
+        const x = margin.left + (i / (labels.length - 1)) * cW;
+        ctx.fillText(labels[i], x, H - margin.bottom + 18);
+    }
+    // Sempre mostrar ultimo label
+    if ((labels.length - 1) % xStep !== 0) {
+        const x = margin.left + cW;
+        ctx.fillText(labels[labels.length - 1], x, H - margin.bottom + 18);
+    }
+
+    // Desenhar linhas
+    datasets.forEach(ds => {
+        ctx.beginPath();
+        ctx.strokeStyle = ds.color || '#00d4aa';
+        ctx.lineWidth = ds.lineWidth || 2;
+        ctx.lineJoin = 'round';
+
+        ds.data.forEach((val, i) => {
+            const x = margin.left + (i / (labels.length - 1)) * cW;
+            const y = margin.top + ((maxVal - val) / (maxVal - minVal)) * cH;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+
+        // Preenchimento
+        if (ds.fill) {
+            const lastX = margin.left + ((labels.length - 1) / (labels.length - 1)) * cW;
+            ctx.lineTo(lastX, margin.top + cH);
+            ctx.lineTo(margin.left, margin.top + cH);
+            ctx.closePath();
+            ctx.fillStyle = ds.fillColor || 'rgba(0,212,170,0.1)';
+            ctx.fill();
+        }
+
+        // Pontos nos dados
+        if (labels.length <= 60) {
+            ds.data.forEach((val, i) => {
+                const x = margin.left + (i / (labels.length - 1)) * cW;
+                const y = margin.top + ((maxVal - val) / (maxVal - minVal)) * cH;
+                ctx.beginPath();
+                ctx.arc(x, y, 3, 0, Math.PI * 2);
+                ctx.fillStyle = ds.color || '#00d4aa';
+                ctx.fill();
+            });
+        }
+    });
+
+    // Legenda
+    if (datasets.length > 1) {
+        let legendX = W - margin.right - 10;
+        ctx.font = '11px Segoe UI';
+        ctx.textAlign = 'right';
+        datasets.slice().reverse().forEach(ds => {
+            const text = ds.label || '';
+            const tw = ctx.measureText(text).width;
+            ctx.fillStyle = ds.color || '#00d4aa';
+            ctx.fillRect(legendX - tw - 18, margin.top - 14, 12, 12);
+            ctx.fillStyle = '#e0e0e0';
+            ctx.fillText(text, legendX, margin.top - 4);
+            legendX -= tw + 30;
+        });
+    }
+
+    // Tooltip hover
+    canvas.onmousemove = function(e) {
+        const r = canvas.getBoundingClientRect();
+        const mx = e.clientX - r.left;
+        const idx = Math.round(((mx - margin.left) / cW) * (labels.length - 1));
+        if (idx >= 0 && idx < labels.length) {
+            canvas.title = labels[idx] + ': ' + datasets.map(ds =>
+                (ds.label ? ds.label + ': ' : '') +
+                (options.formatY ? options.formatY(ds.data[idx]) : ds.data[idx].toFixed(2))
+            ).join(' | ');
+        }
+    };
+    canvas.style.cursor = 'crosshair';
+}
+
+let evoFilter = 'all';
+
+function getFilteredSnapshots() {
+    const all = state.snapshots;
+    if (evoFilter === 'all' || all.length === 0) return all;
+    const now = new Date();
+    const daysMap = {'7d':7, '30d':30, '90d':90, '1y':365};
+    const days = daysMap[evoFilter] || 99999;
+    const cutoff = new Date(now - days * 86400000).toISOString().slice(0, 10);
+    return all.filter(s => s.d >= cutoff);
+}
+
+function renderEvolucao() {
+    const snaps = getFilteredSnapshots();
+
+    const chartIds = ['evo-chart-patrimonio','evo-chart-tipos','evo-chart-rentab','evo-chart-dividendos'];
+    const chartContainers = chartIds.map(id => document.getElementById(id)?.parentElement);
+
+    if (state.snapshots.length === 0) {
+        document.getElementById('evo-empty').style.display = 'block';
+        document.getElementById('evo-stats').innerHTML = '';
+        document.getElementById('evo-period-filter').innerHTML = '';
+        chartContainers.forEach(c => { if(c) c.style.display = 'none'; });
+        document.querySelectorAll('#evolucao h3').forEach(h => h.style.display = 'none');
+        return;
+    }
+
+    document.getElementById('evo-empty').style.display = 'none';
+    chartContainers.forEach(c => { if(c) c.style.display = ''; });
+    document.querySelectorAll('#evolucao h3').forEach(h => h.style.display = '');
+
+    // Filtros
+    document.getElementById('evo-period-filter').innerHTML =
+        ['7d','30d','90d','1y','all'].map(p =>
+            `<button class="btn btn-sm ${evoFilter===p?'btn-primary':''}"
+             style="${evoFilter!==p?'background:var(--bg3);color:var(--text);border:1px solid var(--border)':''}"
+             onclick="evoFilter='${p}';renderEvolucao();">${
+                p==='7d'?'7 dias':p==='30d'?'30 dias':p==='90d'?'90 dias':
+                p==='1y'?'1 ano':'Tudo'
+            }</button>`
+        ).join('');
+
+    if (snaps.length === 0) {
+        document.getElementById('evo-stats').innerHTML = '<p style="color:var(--muted)">Nenhum snapshot no periodo selecionado.</p>';
+        chartIds.forEach(id => {
+            const c = document.getElementById(id);
+            if (c) c.getContext('2d').clearRect(0, 0, c.width, c.height);
+        });
+        return;
+    }
+
+    // Stats
+    const first = snaps[0];
+    const last = snaps[snaps.length - 1];
+    const patVar = last.p - first.p;
+    const patVarPct = first.p > 0 ? ((last.p / first.p) - 1) * 100 : 0;
+    const maxPat = Math.max(...snaps.map(s => s.p));
+    const minPat = Math.min(...snaps.map(s => s.p));
+
+    document.getElementById('evo-stats').innerHTML = `
+        <div class="stat-card"><div class="value">${fmt(last.p)}</div><div class="label">Patrimonio Atual</div></div>
+        <div class="stat-card"><div class="value ${patVar>=0?'':'red'}">${fmt(patVar)}</div><div class="label">Variacao no Periodo (${fmtPct(patVarPct)})</div></div>
+        <div class="stat-card"><div class="value gold">${fmt(maxPat)}</div><div class="label">Maximo no Periodo</div></div>
+        <div class="stat-card"><div class="value">${fmt(minPat)}</div><div class="label">Minimo no Periodo</div></div>
+        <div class="stat-card"><div class="value gold">${fmt(last.dm)}</div><div class="label">Dividendos/mes (est.)</div></div>
+        <div class="stat-card"><div class="value">${snaps.length}</div><div class="label">Snapshots no Periodo</div></div>
+    `;
+
+    // Labels
+    const labels = snaps.map(s => s.d.slice(5));
+
+    // Grafico 1: Patrimonio + Investido
+    drawLineChart('evo-chart-patrimonio', [
+        { label:'Patrimonio', data:snaps.map(s=>s.p), color:'#00d4aa', fill:true, fillColor:'rgba(0,212,170,0.08)' },
+        { label:'Investido', data:snaps.map(s=>s.i), color:'#4fc3f7', lineWidth:1.5 }
+    ], { labels, formatY: v => fmtK(v) });
+
+    // Grafico 2: Por tipo
+    const typeColors = {D:'#00d4aa', F:'#ffd700', V:'#4fc3f7', C:'#ff7043', X:'#ab47bc'};
+    const typeLabelsMap = {D:'Acoes', F:'FIIs', V:'Renda Fixa', C:'Cripto', X:'Caixa'};
+    const typeDatasets = ['D','F','V','C','X']
+        .filter(tk => snaps.some(s => s.t && s.t[tk] > 0))
+        .map(tk => ({
+            label: typeLabelsMap[tk],
+            data: snaps.map(s => (s.t && s.t[tk]) || 0),
+            color: typeColors[tk],
+            lineWidth: 2
+        }));
+    drawLineChart('evo-chart-tipos', typeDatasets, { labels, formatY: v => fmtK(v) });
+
+    // Grafico 3: Rentabilidade
+    const lastR = snaps[snaps.length - 1].r;
+    drawLineChart('evo-chart-rentab', [
+        { label:'Rentabilidade', data:snaps.map(s=>s.r), color:lastR>=0?'#00ff88':'#ff5252',
+          fill:true, fillColor:lastR>=0?'rgba(0,255,136,0.08)':'rgba(255,82,82,0.08)' }
+    ], { labels, formatY: v => v.toFixed(1)+'%' });
+
+    // Grafico 4: Dividendos mensais estimados
+    drawLineChart('evo-chart-dividendos', [
+        { label:'Div. Mensal Est.', data:snaps.map(s=>s.dm), color:'#ffd700',
+          fill:true, fillColor:'rgba(255,215,0,0.08)' }
+    ], { labels, formatY: v => 'R$ '+Math.round(v) });
+}
+
+// ============================================
+// MOBILE MENU
+// ============================================
+function toggleMobileMenu() {
+    const sidebar = document.getElementById('sidebar-nav');
+    const overlay = document.getElementById('sidebar-overlay');
+    const isOpen = sidebar.classList.contains('open');
+    if (isOpen) {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('show');
+    } else {
+        sidebar.classList.add('open');
+        overlay.classList.add('show');
+    }
+}
+
+// Fechar menu mobile ao clicar em qualquer nav-item
+document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+        const sidebar = document.getElementById('sidebar-nav');
+        const overlay = document.getElementById('sidebar-overlay');
+        if (sidebar.classList.contains('open')) {
+            sidebar.classList.remove('open');
+            overlay.classList.remove('show');
+        }
+    });
+});
+
+// ============================================
+// GOOGLE SHEETS SYNC
+// ============================================
+const GOOGLE_CLIENT_ID = GOOGLE_CLIENT_ID_VALUE;
+const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
+const SYNC_SHEET_NAME = 'Gestor Carteira Sync';
+const SYNC_TAB_NAME = 'sync_data';
+
+let googleTokenClient = null;
+let googleAccessToken = null;
+let syncSheetId = null;
+
+function initGoogleSync() {
+    if (typeof google === 'undefined' || !google.accounts) {
+        setTimeout(initGoogleSync, 500);
+        return;
+    }
+    googleTokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_CLIENT_ID,
+        scope: GOOGLE_SCOPES,
+        callback: handleGoogleToken,
+    });
+    // Verificar se ja tem token (do auth unificado ou da sessao)
+    if (googleAccessToken) {
+        onGoogleConnected();
+    } else {
+        const savedToken = sessionStorage.getItem('googleAccessToken');
+        if (savedToken) {
+            googleAccessToken = savedToken;
+            onGoogleConnected();
+        }
+    }
+}
+
+function loginGoogle() {
+    if (!googleTokenClient) {
+        showNotification('Google Identity Services ainda carregando. Tente novamente.', 'warning');
+        initGoogleSync();
+        return;
+    }
+    if (GOOGLE_CLIENT_ID.includes('SEU_CLIENT_ID_AQUI')) {
+        showNotification('Configure seu Google Client ID no codigo! Veja instrucoes no sidebar.', 'error');
+        return;
+    }
+    googleTokenClient.requestAccessToken();
+}
+
+function handleGoogleToken(resp) {
+    if (resp.error) {
+        showNotification('Erro ao conectar: ' + resp.error, 'error');
+        return;
+    }
+    googleAccessToken = resp.access_token;
+    sessionStorage.setItem('googleAccessToken', googleAccessToken);
+    // Atualizar sessao persistente de 30 min
+    const session = getAuthSession();
+    if (session) {
+        saveAuthSession(resp.access_token, session.email);
+    }
+    onGoogleConnected();
+}
+
+async function onGoogleConnected() {
+    updateSyncUI(true, 'Conectado');
+    try {
+        const sheetId = await findSyncSheet();
+        if (sheetId) {
+            syncSheetId = sheetId;
+            showNotification('Google conectado! Planilha encontrada.', 'success');
+        } else {
+            syncSheetId = await createSyncSheet();
+            showNotification('Google conectado! Planilha criada.', 'success');
+        }
+        // Carregar dados da nuvem na primeira conexao
+        await syncFromSheets();
+    } catch(e) {
+        if (e.message && e.message.includes('401')) {
+            // Token expirado
+            sessionStorage.removeItem('googleAccessToken');
+            googleAccessToken = null;
+            clearAuthSession();
+            updateSyncUI(false, 'Token expirado');
+            showNotification('Sessao expirada. Clique em Conectar Google novamente.', 'warning');
+        } else {
+            showNotification('Erro na sincronizacao: ' + e.message, 'error');
+        }
+    }
+}
+
+function logoutGoogle() {
+    if (googleAccessToken) {
+        google.accounts.oauth2.revoke(googleAccessToken);
+    }
+    googleAccessToken = null;
+    syncSheetId = null;
+    sessionStorage.removeItem('googleAccessToken');
+    clearAuthSession();
+    updateSyncUI(false, 'Desconectado');
+    showNotification('Desconectado do Google.', 'info');
+}
+
+function updateSyncUI(connected, statusText) {
+    const dot = document.getElementById('sync-dot');
+    const text = document.getElementById('sync-status-text');
+    const btns = document.getElementById('sync-buttons');
+    const lastInfo = document.getElementById('sync-last-info');
+
+    dot.className = 'sync-dot ' + (connected ? 'connected' : 'disconnected');
+    text.textContent = statusText || (connected ? 'Conectado' : 'Desconectado');
+
+    if (connected) {
+        btns.innerHTML = `
+            <button class="sync-btn btn-sync" onclick="manualSync()" id="btn-sync-now">
+                <span>↻</span> Sincronizar Agora
+            </button>
+            <button class="sync-btn btn-logout" onclick="logoutGoogle()" style="margin-top:6px;">
+                Desconectar Google
+            </button>
+        `;
+        const lastSync = localStorage.getItem('gestorCarteira_lastSync');
+        if (lastSync) {
+            lastInfo.textContent = 'Ultima sync: ' + lastSync;
+        }
+    } else {
+        btns.innerHTML = `
+            <button class="sync-btn btn-google" onclick="loginGoogle()">
+                <span style="font-size:1.1em;">G</span> Conectar Google
+            </button>
+        `;
+        lastInfo.textContent = '';
+    }
+}
+
+async function sheetsAPI(url, options) {
+    if (!googleAccessToken) throw new Error('Nao conectado ao Google');
+    const resp = await fetch(url, {
+        ...options,
+        headers: {
+            'Authorization': 'Bearer ' + googleAccessToken,
+            'Content-Type': 'application/json',
+            ...(options?.headers || {})
+        }
+    });
+    if (!resp.ok) {
+        const errText = await resp.text();
+        throw new Error(resp.status + ': ' + errText);
+    }
+    return resp.json();
+}
+
+async function findSyncSheet() {
+    const data = await sheetsAPI(
+        'https://www.googleapis.com/drive/v3/files?q=' +
+        encodeURIComponent("mimeType='application/vnd.google-apps.spreadsheet' and name='" + SYNC_SHEET_NAME + "' and trashed=false") +
+        '&fields=files(id,name)'
+    );
+    if (data.files && data.files.length > 0) {
+        return data.files[0].id;
+    }
+    return null;
+}
+
+async function createSyncSheet() {
+    const data = await sheetsAPI('https://sheets.googleapis.com/v4/spreadsheets', {
+        method: 'POST',
+        body: JSON.stringify({
+            properties: { title: SYNC_SHEET_NAME },
+            sheets: [{ properties: { title: SYNC_TAB_NAME } }]
+        })
+    });
+    return data.spreadsheetId;
+}
+
+let isSyncing = false;
+
+async function syncToSheets() {
+    if (!googleAccessToken || !syncSheetId) return;
+    if (isSyncing) return;
+    isSyncing = true;
+
+    const syncBtn = document.getElementById('btn-sync-now');
+    if (syncBtn) syncBtn.innerHTML = '<span class="sync-spinner"></span> Salvando...';
+
+    try {
+        let dataToSync;
+        // Se criptografia ativa, enviar o crypto store (ja criptografado)
+        const cryptoRaw = localStorage.getItem(CRYPTO_STORAGE_KEY);
+        if (sessionCryptoKey && cryptoRaw) {
+            dataToSync = JSON.stringify({ encrypted: true, crypto: JSON.parse(cryptoRaw) });
+        } else {
+            dataToSync = JSON.stringify(state);
+        }
+
+        const CHUNK_SIZE = 40000;
+        const chunks = [];
+        for (let i = 0; i < dataToSync.length; i += CHUNK_SIZE) {
+            chunks.push(dataToSync.substring(i, i + CHUNK_SIZE));
+        }
+
+        const marker = sessionCryptoKey && cryptoRaw ? 'encrypted' : chunks.length.toString();
+        const values = [[marker], ...chunks.map(c => [c])];
+
+        await sheetsAPI(
+            'https://sheets.googleapis.com/v4/spreadsheets/' + syncSheetId +
+            '/values/' + SYNC_TAB_NAME + '!A1:A' + (chunks.length + 1) +
+            '?valueInputOption=RAW',
+            {
+                method: 'PUT',
+                body: JSON.stringify({ values })
+            }
+        );
+
+        const clearStart = chunks.length + 2;
+        try {
+            await sheetsAPI(
+                'https://sheets.googleapis.com/v4/spreadsheets/' + syncSheetId +
+                '/values/' + SYNC_TAB_NAME + '!A' + clearStart + ':A1000:clear',
+                { method: 'POST' }
+            );
+        } catch(e) {}
+
+        const now = new Date().toLocaleString('pt-BR');
+        localStorage.setItem('gestorCarteira_lastSync', now);
+        document.getElementById('sync-last-info').textContent = 'Ultima sync: ' + now;
+    } finally {
+        isSyncing = false;
+        if (syncBtn) syncBtn.innerHTML = '<span>↻</span> Sincronizar Agora';
+    }
+}
+
+async function syncFromSheets() {
+    if (!googleAccessToken || !syncSheetId) return;
+    if (isSyncing) return;
+    isSyncing = true;
+
+    const syncBtn = document.getElementById('btn-sync-now');
+    if (syncBtn) syncBtn.innerHTML = '<span class="sync-spinner"></span> Carregando...';
+
+    try {
+        const data = await sheetsAPI(
+            'https://sheets.googleapis.com/v4/spreadsheets/' + syncSheetId +
+            '/values/' + SYNC_TAB_NAME + '!A1:A1000'
+        );
+
+        if (!data.values || data.values.length < 2) {
+            await syncToSheets();
+            return;
+        }
+
+        const marker = data.values[0][0];
+
+        let cloudState = null;
+
+        if (marker === 'encrypted') {
+            // Dados criptografados na nuvem
+            let payloadJSON = '';
+            for (let i = 1; i < data.values.length; i++) {
+                payloadJSON += (data.values[i][0] || '');
+            }
+            if (payloadJSON && sessionCryptoKey) {
+                const payload = JSON.parse(payloadJSON);
+                if (payload.encrypted && payload.crypto) {
+                    try {
+                        cloudState = await loadStateEncrypted(sessionCryptoKey, payload.crypto);
+                    } catch(e) {
+                        showNotification('Erro ao descriptografar dados da nuvem.', 'warning');
+                    }
+                }
+            }
+        } else {
+            // Dados plaintext (formato legado)
+            const numChunks = parseInt(marker) || 1;
+            let stateJSON = '';
+            for (let i = 1; i <= numChunks && i < data.values.length; i++) {
+                stateJSON += (data.values[i][0] || '');
+            }
+            if (stateJSON) {
+                cloudState = JSON.parse(stateJSON);
+                if (cloudState.ativos) cloudState = mergeWithDefaults(cloudState);
+                else cloudState = null;
+            }
+        }
+
+        if (cloudState && cloudState.ativos) {
+            const localMod = state._lastModified || '0';
+            const cloudMod = cloudState._lastModified || '0';
+            if (cloudMod > localMod) {
+                // Merge snapshots: manter snapshots locais que nao existem na nuvem
+                const localSnaps = state.snapshots || [];
+                const cloudSnaps = cloudState.snapshots || [];
+                const mergedSnaps = [...cloudSnaps];
+                localSnaps.forEach(ls => {
+                    if (!mergedSnaps.find(cs => cs.d === ls.d)) {
+                        mergedSnaps.push(ls);
+                    }
+                });
+                mergedSnaps.sort((a, b) => a.d.localeCompare(b.d));
+
+                // Merge deletedTickers: unir ambas as listas
+                const localDeleted = state.deletedTickers || [];
+                const cloudDeleted = cloudState.deletedTickers || [];
+                const mergedDeleted = [...new Set([...cloudDeleted, ...localDeleted])];
+
+                state = cloudState;
+                state.snapshots = mergedSnaps;
+                state.deletedTickers = mergedDeleted;
+                await saveState();
+                const activePage = document.querySelector('.page.active');
+                if (activePage) renderPage(activePage.id);
+                showNotification('Dados sincronizados da nuvem!', 'success');
+            }
+        }
+
+        const now = new Date().toLocaleString('pt-BR');
+        localStorage.setItem('gestorCarteira_lastSync', now);
+        document.getElementById('sync-last-info').textContent = 'Ultima sync: ' + now;
+    } finally {
+        isSyncing = false;
+        if (syncBtn) syncBtn.innerHTML = '<span>↻</span> Sincronizar Agora';
+    }
+}
+
+async function manualSync() {
+    if (!googleAccessToken) {
+        showNotification('Conecte-se ao Google primeiro.', 'warning');
+        return;
+    }
+    try {
+        await syncToSheets();
+        showNotification('Dados salvos na nuvem!', 'success');
+    } catch(e) {
+        if (e.message && e.message.includes('401')) {
+            sessionStorage.removeItem('googleAccessToken');
+            googleAccessToken = null;
+            clearAuthSession();
+            updateSyncUI(false, 'Token expirado');
+            showNotification('Sessao expirada. Reconecte ao Google.', 'warning');
+        } else {
+            showNotification('Erro ao sincronizar: ' + e.message, 'error');
+        }
+    }
+}
+
+// Wrapper do saveState para marcar timestamp e auto-sync
+const _coreSaveState = saveState;
+saveState = async function() {
+    state._lastModified = new Date().toISOString();
+    await _coreSaveState();
+    // Auto-sync apos salvar (debounced)
+    if (googleAccessToken && syncSheetId) {
+        clearTimeout(saveState._syncTimeout);
+        saveState._syncTimeout = setTimeout(() => {
+            syncToSheets().catch(() => {});
+        }, 3000);
+    }
+};
+
+// ============================================
+// CRYPTO UI FUNCTIONS
+// ============================================
+function checkPasswordStrength(pass, suffix) {
+    const barId = suffix ? 'crypto-strength-bar-' + suffix : 'crypto-strength-bar';
+    const textId = suffix ? 'crypto-strength-text-' + suffix : 'crypto-strength-text';
+    const bar = document.getElementById(barId);
+    const text = document.getElementById(textId);
+    if (!bar || !text) return;
+
+    let score = 0;
+    if (pass.length >= 4) score++;
+    if (pass.length >= 8) score++;
+    if (/[A-Z]/.test(pass) && /[a-z]/.test(pass)) score++;
+    if (/\d/.test(pass)) score++;
+    if (/[^A-Za-z0-9]/.test(pass)) score++;
+
+    const levels = [
+        { bg:'var(--red)', w:'20%', t:'Muito fraca', c:'var(--red)' },
+        { bg:'var(--red)', w:'40%', t:'Fraca', c:'var(--red)' },
+        { bg:'var(--orange)', w:'60%', t:'Razoavel', c:'var(--orange)' },
+        { bg:'var(--gold)', w:'80%', t:'Boa', c:'var(--gold)' },
+        { bg:'var(--green)', w:'100%', t:'Forte', c:'var(--green)' }
+    ];
+    const lvl = levels[Math.min(score, levels.length) - 1] || levels[0];
+    bar.style.background = pass ? lvl.bg : 'transparent';
+    bar.style.width = pass ? lvl.w : '0';
+    text.textContent = pass ? lvl.t : '';
+    text.style.color = pass ? lvl.c : '';
+}
+
+function showCryptoForm(formId) {
+    document.querySelectorAll('.crypto-form').forEach(f => f.classList.remove('active'));
+    document.getElementById(formId).classList.add('active');
+}
+
+function showCryptoResetHelp() {
+    const el = document.getElementById('crypto-reset-help');
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function cryptoRestoreFromBackup() {
+    document.getElementById('crypto-restore-input').click();
+}
+
+async function cryptoProcessRestore(input) {
+    const file = input.files[0];
+    if (!file) return;
+    input.value = '';
+
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+        try {
+            const parsed = JSON.parse(e.target.result);
+            const data = parsed.data || parsed;
+            if (!data.ativos || !Array.isArray(data.ativos)) {
+                showNotification('Arquivo invalido.', 'error');
+                return;
+            }
+            if (!confirm('Restaurar backup e definir nova senha? Os dados criptografados atuais serao substituidos.')) return;
+
+            localStorage.removeItem(CRYPTO_STORAGE_KEY);
+            localStorage.removeItem('gestorCarteira_v2');
+            sessionCryptoKey = null;
+            sessionSalt = null;
+
+            state = mergeWithDefaults(data);
+            if (!state.proventos) state.proventos = [];
+            if (!state.historico) state.historico = [];
+            if (!state.snapshots) state.snapshots = [];
+
+            // Ir para tela de definir nova senha
+            document.getElementById('crypto-setup-subtitle').textContent = 'Backup restaurado! Defina uma nova senha para proteger os dados.';
+            showCryptoForm('crypto-setup');
+        } catch (err) {
+            showNotification('Erro ao ler arquivo: ' + err.message, 'error');
+        }
+    };
+    reader.readAsText(file, 'UTF-8');
+}
+
+function cryptoFullReset() {
+    if (!confirm('ATENCAO: Isso apagara TODOS os dados permanentemente. Deseja continuar?')) return;
+    if (!confirm('Tem certeza? Esta acao nao pode ser desfeita.')) return;
+    localStorage.removeItem(CRYPTO_STORAGE_KEY);
+    localStorage.removeItem('gestorCarteira_v2');
+    sessionCryptoKey = null;
+    sessionSalt = null;
+    state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+    document.getElementById('crypto-setup-subtitle').textContent = 'Dados resetados. Defina uma nova senha.';
+    showCryptoForm('crypto-setup');
+}
+
+async function cryptoUnlock() {
+    const pass = document.getElementById('crypto-login-pass').value;
+    const errorEl = document.getElementById('crypto-login-error');
+    if (!pass) { errorEl.textContent = 'Digite a senha.'; return; }
+
+    errorEl.textContent = 'Verificando...';
+    // Timeout para dar tempo da UI atualizar
+    await new Promise(r => setTimeout(r, 50));
+
+    try {
+        const cryptoRaw = localStorage.getItem(CRYPTO_STORAGE_KEY);
+        const cryptoStore = JSON.parse(cryptoRaw);
+        const key = await verifyPassword(pass, cryptoStore);
+
+        if (!key) {
+            errorEl.textContent = 'Senha incorreta.';
+            document.getElementById('crypto-login-pass').value = '';
+            document.getElementById('crypto-login-pass').focus();
+            return;
+        }
+
+        sessionCryptoKey = key;
+        sessionSalt = hexToBytes(cryptoStore.salt);
+
+        state = await loadStateEncrypted(key, cryptoStore);
+        startApp();
+    } catch(e) {
+        errorEl.textContent = 'Erro ao descriptografar: ' + e.message;
+    }
+}
+
+async function cryptoSetup() {
+    const pass = document.getElementById('crypto-setup-pass').value;
+    const confirm_ = document.getElementById('crypto-setup-confirm').value;
+    const errorEl = document.getElementById('crypto-setup-error');
+
+    if (pass.length < 4) { errorEl.textContent = 'Senha deve ter no minimo 4 caracteres.'; return; }
+    if (pass !== confirm_) { errorEl.textContent = 'As senhas nao conferem.'; return; }
+
+    errorEl.textContent = 'Criptografando dados...';
+    await new Promise(r => setTimeout(r, 50));
+
+    try {
+        const salt = generateSalt();
+        const key = await deriveKey(pass, salt);
+
+        sessionCryptoKey = key;
+        sessionSalt = salt;
+
+        await saveState();
+        startApp();
+        showNotification('Senha definida! Seus dados estao agora criptografados.', 'success');
+    } catch(e) {
+        errorEl.textContent = 'Erro: ' + e.message;
+    }
+}
+
+function showChangePassword() {
+    if (!sessionCryptoKey) {
+        showNotification('Nenhuma senha definida ainda.', 'warning');
+        return;
+    }
+    document.getElementById('crypto-change-old').value = '';
+    document.getElementById('crypto-change-new').value = '';
+    document.getElementById('crypto-change-confirm').value = '';
+    document.getElementById('crypto-change-error').textContent = '';
+    showCryptoForm('crypto-change');
+    document.getElementById('crypto-overlay').style.display = 'flex';
+    document.body.classList.add('app-locked');
+}
+
+function closeCryptoChange() {
+    document.getElementById('crypto-overlay').style.display = 'none';
+    document.body.classList.remove('app-locked');
+}
+
+async function cryptoChangePassword() {
+    const oldPass = document.getElementById('crypto-change-old').value;
+    const newPass = document.getElementById('crypto-change-new').value;
+    const confirmPass = document.getElementById('crypto-change-confirm').value;
+    const errorEl = document.getElementById('crypto-change-error');
+
+    if (!oldPass) { errorEl.textContent = 'Digite a senha atual.'; return; }
+    if (newPass.length < 4) { errorEl.textContent = 'Nova senha deve ter no minimo 4 caracteres.'; return; }
+    if (newPass !== confirmPass) { errorEl.textContent = 'As senhas nao conferem.'; return; }
+
+    errorEl.textContent = 'Verificando senha atual...';
+    await new Promise(r => setTimeout(r, 50));
+
+    try {
+        const cryptoRaw = localStorage.getItem(CRYPTO_STORAGE_KEY);
+        const cryptoStore = JSON.parse(cryptoRaw);
+        const key = await verifyPassword(oldPass, cryptoStore);
+
+        if (!key) {
+            errorEl.textContent = 'Senha atual incorreta.';
+            return;
+        }
+
+        errorEl.textContent = 'Re-criptografando dados...';
+        await new Promise(r => setTimeout(r, 50));
+
+        const newSalt = generateSalt();
+        const newKey = await deriveKey(newPass, newSalt);
+
+        sessionCryptoKey = newKey;
+        sessionSalt = newSalt;
+
+        await saveState();
+        closeCryptoChange();
+        showNotification('Senha alterada com sucesso!', 'success');
+    } catch(e) {
+        errorEl.textContent = 'Erro: ' + e.message;
+    }
+}
+
+// ============================================
+// INIT
+// ============================================
+function initApp() {
+    const hasCrypto = localStorage.getItem(CRYPTO_STORAGE_KEY);
+    const hasPlaintext = localStorage.getItem('gestorCarteira_v2');
+
+    if (hasCrypto) {
+        // Dados criptografados existem -> tela de login
+        showCryptoForm('crypto-login');
+        document.getElementById('crypto-overlay').style.display = 'flex';
+        document.body.classList.add('app-locked');
+        setTimeout(() => document.getElementById('crypto-login-pass').focus(), 100);
+    } else if (hasPlaintext) {
+        // Dados plaintext existem -> migrar: pedir para definir senha
+        state = mergeWithDefaults(JSON.parse(hasPlaintext));
+        document.getElementById('crypto-setup-subtitle').textContent = 'Dados existentes detectados. Defina uma senha para criptografa-los.';
+        showCryptoForm('crypto-setup');
+        document.getElementById('crypto-overlay').style.display = 'flex';
+        document.body.classList.add('app-locked');
+    } else {
+        // Primeiro uso -> definir senha
+        showCryptoForm('crypto-setup');
+        document.getElementById('crypto-overlay').style.display = 'flex';
+        document.body.classList.add('app-locked');
+    }
+}
+
+function startApp() {
+    document.getElementById('crypto-overlay').style.display = 'none';
+    document.body.classList.remove('app-locked');
+    renderDashboard();
+    updateLastUpdateDisplay();
+    setTimeout(initGoogleSync, 1000);
+
+    // AUTO-UPDATE: atualizar cotacoes ao abrir (se ultima atualizacao > 15min)
+    const lastTs = parseInt(localStorage.getItem('gestorCarteira_lastUpdateTs')) || 0;
+    const diffMin = (Date.now() - lastTs) / 60000;
+    if(diffMin > 15) {
+        setTimeout(() => updateCotacoes(), 2000);
+    } else {
+        // Se cotacoes recentes, buscar apenas dados de dividendos em background
+        setTimeout(() => fetchDividendsDataBackground(), 3000);
+    }
+}
+
+// Iniciar: tentar restaurar sessao salva (30 min), senao mostra auth gate
+// tryRestoreSession() retorna true se encontrou sessao e esta validando async
+// Se nao tem sessao, mostra o auth overlay normalmente
+(function boot() {
+    if (!tryRestoreSession()) {
+        // Sem sessao salva, mostrar auth gate
+        document.getElementById('auth-overlay').style.display = 'flex';
+    }
+})();
+
+// Atualizar a cada 15 minutos
+setInterval(() => updateCotacoes(), 15 * 60 * 1000);
+</script>
+</body>
+</html>
